@@ -3,6 +3,7 @@
  "autoname": "format:{ref_doctype}-{####}",
  "creation": "2025-11-09 02:16:55.781330",
  "doctype": "DocType",
+ "custom": 1,
  "engine": "InnoDB",
  "field_order": [
   "code_details_section",
