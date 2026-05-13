@@ -3,6 +3,7 @@
  "allow_rename": 1,
  "creation": "2025-11-09 10:20:23.220691",
  "doctype": "DocType",
+ "custom": 1,
  "engine": "InnoDB",
  "field_order": [
   "tab_allowed",
