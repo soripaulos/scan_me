@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoincrement": 1,
+ "creation": "2026-05-16 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Data",
+   "label": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Data",
+   "label": "Grade / Class",
+   "read_only": 1
+  },
+  {
+   "fieldname": "photo",
+   "fieldtype": "Attach Image",
+   "label": "Photo",
+   "read_only": 1
+  },
+  {
+   "fieldname": "is_final",
+   "fieldtype": "Check",
+   "label": "Final (Year-End) Report"
+  },
+  {
+   "fieldname": "semester_reports",
+   "fieldtype": "Table",
+   "label": "Semester Reports",
+   "options": "Report Card Semester",
+   "reqd": 0
+  },
+  {
+   "fieldname": "year_reports",
+   "fieldtype": "Table",
+   "label": "Year Reports",
+   "options": "Report Card Year",
+   "reqd": 0
+  }
+ ],
+ "modified": "2026-05-16 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scan Me",
+ "name": "Report Card",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 1,
+   "read": 1,
+   "report": 0,
+   "role": "Guest",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name"
+}

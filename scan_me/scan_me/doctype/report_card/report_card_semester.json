@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoincrement": 1,
+ "creation": "2026-05-16 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "fields": [
+  {
+   "fieldname": "academic_term",
+   "fieldtype": "Select",
+   "label": "Academic Term",
+   "options": "First Semester\nSecond Semester",
+   "reqd": 1
+  },
+  {
+   "fieldname": "term_average",
+   "fieldtype": "Float",
+   "label": "Term Average (%)",
+   "precision": 2
+  },
+  {
+   "fieldname": "rank_in_group",
+   "fieldtype": "Int",
+   "label": "Rank in Group"
+  },
+  {
+   "fieldname": "promotion_decision",
+   "fieldtype": "Data",
+   "label": "Promotion Decision"
+  },
+  {
+   "fieldname": "first_semester_remarks",
+   "fieldtype": "Small Text",
+   "label": "First Semester Remarks"
+  },
+  {
+   "fieldname": "second_semester_remarks",
+   "fieldtype": "Small Text",
+   "label": "Second Semester Remarks"
+  },
+  {
+   "fieldname": "courses",
+   "fieldtype": "Table",
+   "label": "Courses",
+   "options": "Report Card Course"
+  }
+ ],
+ "idx": 1,
+ "modified": "2026-05-16 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scan Me",
+ "name": "Report Card Semester",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "istable": 1
+}

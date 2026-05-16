@@ -20,6 +20,7 @@
   "signature_type",
   "watermark_mode",
   "default_qr_validity_days",
+  "default_academic_year",
   "tab_verify_page",
   "verify_page_section",
   "public_verify_detail",
@@ -124,6 +125,13 @@
    "default": "0",
    "non_negative": 1,
    "description": "How long a newly generated Verified QR stays valid, counted from the signing date. 0 (default) means the QR never expires. Applied at sign time only — changing this value does NOT retroactively expire existing QRs. The /verify_document page returns an 'expired' status for scans of an expired QR."
+  },
+  {
+   "fieldname": "default_academic_year",
+   "fieldtype": "Data",
+   "label": "Default Academic Year",
+   "default": "2018 E.C.",
+   "description": "Default academic year used in the Report Card Generator tool (e.g. '2018 E.C.')."
   },
   {
    "fieldname": "tab_verify_page",

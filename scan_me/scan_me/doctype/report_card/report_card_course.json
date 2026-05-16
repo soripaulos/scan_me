@@ -1,0 +1,48 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoincrement": 1,
+ "creation": "2026-05-16 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "fields": [
+  {
+   "fieldname": "course",
+   "fieldtype": "Data",
+   "label": "Course",
+   "reqd": 1
+  },
+  {
+   "fieldname": "score",
+   "fieldtype": "Float",
+   "label": "Score",
+   "precision": 2
+  },
+  {
+   "fieldname": "maximum",
+   "fieldtype": "Float",
+   "label": "Maximum",
+   "precision": 2
+  },
+  {
+   "fieldname": "percentage",
+   "fieldtype": "Float",
+   "label": "Percentage (%)",
+   "precision": 2
+  }
+ ],
+ "idx": 2,
+ "modified": "2026-05-16 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scan Me",
+ "name": "Report Card Course",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "istable": 1
+}

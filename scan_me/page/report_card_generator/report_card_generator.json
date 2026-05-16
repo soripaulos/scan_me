@@ -1,0 +1,22 @@
+{
+ "content": "",
+ "creation": "2026-05-16 12:00:00.000000",
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2026-05-16 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scan Me",
+ "name": "report-card-generator",
+ "owner": "Administrator",
+ "page_name": "report-card-generator",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
+ "script": "",
+ "standard": "Yes",
+ "style": "",
+ "system_page": 1,
+ "title": "Report Card Generator"
+}

@@ -234,10 +234,59 @@ def verify_document_qr(uuid=None):
 		body["stored_hash"] = stored_hash
 		body["current_hash"] = current_hash
 
-	# Always include report card data for Student Term Report when status is
-	# valid or tampered — the field is stored on the Verified QR record which
-	# is world-readable via the existing query, so no extra permission needed.
+	# Always include report card data.
+	# For Student Term Report: stored snapshot from sign time.
+	# For Report Card doctype: live fields from the document itself.
 	if qr.report_card_data:
 		body["report_card_data"] = qr.report_card_data
+	elif qr.ref_doctype == "Report Card":
+		# Load live Report Card data — guest can read Report Card via Guest permission
+		try:
+			rc = frappe.get_doc("Report Card", qr.ref_docname)
+			semesters = []
+			for sem in (rc.get("semester_reports") or []):
+				courses = []
+				for c in (sem.get("courses") or []):
+					courses.append({
+						"course": c.get("course"),
+						"score": c.get("score"),
+						"maximum": c.get("maximum"),
+						"percentage": c.get("percentage"),
+					})
+				semesters.append({
+					"academic_term": sem.get("academic_term"),
+					"term_average": sem.get("term_average"),
+					"rank_in_group": sem.get("rank_in_group"),
+					"promotion_decision": sem.get("promotion_decision"),
+					"first_semester_remarks": sem.get("first_semester_remarks"),
+					"second_semester_remarks": sem.get("second_semester_remarks"),
+					"courses": courses,
+				})
+			year_reports = []
+			for yr in (rc.get("year_reports") or []):
+				ycourses = []
+				for c in (yr.get("courses") or []):
+					ycourses.append({
+						"course": c.get("course"),
+						"score": c.get("score"),
+						"maximum": c.get("maximum"),
+						"percentage": c.get("percentage"),
+					})
+				year_reports.append({
+					"year_average": yr.get("year_average"),
+					"rank_in_group": yr.get("rank_in_group"),
+					"courses": ycourses,
+				})
+			body["report_card_data"] = frappe.as_json({
+				"student_name": rc.get("student_name"),
+				"academic_year": rc.get("academic_year"),
+				"student_group": rc.get("student_group"),
+				"photo": rc.get("photo"),
+				"is_final": rc.get("is_final"),
+				"semesters": semesters,
+				"year_reports": year_reports,
+			})
+		except Exception:
+			pass
 
 	return body
