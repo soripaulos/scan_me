@@ -28,7 +28,7 @@ def _attach_pdf_to_doc(pdf_bytes, safe_name, doctype, name):
 			content=pdf_bytes,
 			dt=doctype,
 			dn=name,
-			is_private=1,
+			is_private=0,
 		)
 		frappe.db.commit()  # ensure the File row persists even with response streaming
 	except Exception:

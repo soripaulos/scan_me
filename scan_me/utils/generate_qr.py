@@ -39,6 +39,36 @@ def _lookup_user_signature(user):
 	return None
 
 
+# --- report card data snapshot -------------------------------------
+# For Student Term Report, capture field values at sign time so the
+# public verify page can display them without needing read permission
+# on the source document. Extensible to other doctypes later.
+def _capture_report_card_data(doctype, docname):
+	if doctype != "Student Term Report":
+		return None
+	try:
+		doc = frappe.get_doc(doctype, docname, for_validation=False)
+		course_rows = []
+		for row in (doc.get("course_summary") or []):
+			course_rows.append({
+				"course":      row.get("course"),
+				"score":       row.get("total_score_for_term"),
+				"maximum":     row.get("total_maximum_score"),
+				"percentage":  row.get("percentage"),
+			})
+		return frappe.as_json({
+			"student_name":   doc.get("student_name"),
+			"academic_year":  doc.get("academic_year"),
+			"academic_term":  doc.get("academic_term"),
+			"student_group":  doc.get("student_group"),
+			"term_average":   doc.get("term_average"),
+			"rank_in_group":  doc.get("rank_in_group"),
+			"courses":        course_rows,
+		})
+	except Exception:
+		return None
+
+
 @frappe.whitelist(allow_guest=False)
 def generate_verified_qr(doctype, docname, signature_data=None):
 	"""Create a Verified QR for a document.
@@ -125,6 +155,9 @@ def generate_verified_qr(doctype, docname, signature_data=None):
 		validity_days = 0
 	valid_until = frappe.utils.add_days(signed_on, validity_days) if validity_days > 0 else None
 
+	# Capture report card data snapshot for public verify display.
+	report_card_data = _capture_report_card_data(doctype, docname)
+
 	unique_id = str(uuid.uuid4())
 	qr_master = frappe.get_doc(
 		{
@@ -138,6 +171,7 @@ def generate_verified_qr(doctype, docname, signature_data=None):
 			**({"signature": final_signature} if final_signature else {}),
 			**({"content_hash": content_hash} if content_hash else {}),
 			**({"valid_until": valid_until} if valid_until else {}),
+			**({"report_card_data": report_card_data} if report_card_data else {}),
 		}
 	)
 	# ignore_permissions is intentional: Verified QR is a ledger whose

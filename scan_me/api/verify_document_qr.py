@@ -122,6 +122,7 @@ def verify_document_qr(uuid=None):
 			"content_hash",
 			"unique_id",
 			"valid_until",
+			"report_card_data",
 		],
 		as_dict=True,
 	)
@@ -232,5 +233,11 @@ def verify_document_qr(uuid=None):
 	if "hashes" in allowed and tampered:
 		body["stored_hash"] = stored_hash
 		body["current_hash"] = current_hash
+
+	# Always include report card data for Student Term Report when status is
+	# valid or tampered — the field is stored on the Verified QR record which
+	# is world-readable via the existing query, so no extra permission needed.
+	if qr.report_card_data:
+		body["report_card_data"] = qr.report_card_data
 
 	return body

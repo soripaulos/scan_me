@@ -302,3 +302,112 @@ html, body {
     padding-top: 8px;
 }
 .foot a { color: var(--text-muted); }
+
+/* Report Card display */
+.report-card-wrap {
+    margin: 0 0 4px;
+}
+
+.report-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+}
+
+.report-card .rc-header {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.report-card .rc-title {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+}
+
+.report-card .rc-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.report-card .rc-summary {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.report-card .rc-avg,
+.report-card .rc-rank {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    padding: 10px;
+    background: var(--ok-bg);
+    border: 1px solid var(--ok-border);
+    border-radius: 8px;
+}
+
+.report-card .rc-rank {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.report-card .rc-rank .rc-rank-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.report-card .rc-avg-value,
+.report-card .rc-rank-value {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.report-card .rc-avg-label,
+.report-card .rc-rank-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.report-card .rc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.report-card .rc-table th {
+    text-align: left;
+    padding: 5px 8px;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+}
+
+.report-card .rc-table th:not(:first-child),
+.report-card .rc-table td:not(:first-child) {
+    text-align: right;
+}
+
+.report-card .rc-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+
+.report-card .rc-table tr:last-child td {
+    border-bottom: none;
+}

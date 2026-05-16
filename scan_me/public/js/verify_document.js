@@ -96,7 +96,6 @@
 	}
 
 	function pickCameraId(cameras) {
-		// Prefer rear-facing camera on mobiles.
 		for (var i = 0; i < cameras.length; i++) {
 			var label = (cameras[i].label || "").toLowerCase();
 			if (
@@ -111,7 +110,7 @@
 	}
 
 	function setScanButton(running) {
-		$scanLabel.textContent = running ? "Scanning…" : "Scan QR Code";
+		$scanLabel.textContent = running ? "Scanning\u2026" : "Scan QR Code";
 		$scanBtn.disabled = running;
 		$stopBtn.hidden = !running;
 	}
@@ -135,9 +134,6 @@
 
 		renderLoading();
 
-		// POST-only endpoint. URLSearchParams auto-sets
-		// Content-Type: application/x-www-form-urlencoded so Frappe's form_dict
-		// picks up ``uuid`` transparently.
 		fetch("/api/method/scan_me.api.verify_document_qr.verify_document_qr", {
 			method: "POST",
 			credentials: "same-origin",
@@ -166,6 +162,7 @@
 							d.message ||
 							"This document is authentic and has not been modified since signing.",
 						details: collectDetails(d),
+						reportCardData: d.report_card_data,
 					});
 				} else if (status === "tampered") {
 					renderState("tampered", {
@@ -174,6 +171,7 @@
 							d.message ||
 							"The document has been modified after signing. The signature is no longer valid.",
 						details: collectDetails(d),
+						reportCardData: d.report_card_data,
 					});
 				} else {
 					renderState("invalid", {
@@ -193,8 +191,6 @@
 	}
 
 	function collectDetails(d) {
-		// Map API response fields → label/value pairs, in order. Only fields
-		// the API chose to return (per Public Verify Detail Level) appear.
 		var pairs = [];
 		if (d.ref_doctype) pairs.push(["Document Type", d.ref_doctype, true]);
 		if (d.ref_docname) pairs.push(["Reference", d.ref_docname, true]);
@@ -204,6 +200,87 @@
 		if (d.stored_hash) pairs.push(["Signed Hash", d.stored_hash, false]);
 		if (d.current_hash) pairs.push(["Current Hash", d.current_hash, false]);
 		return pairs;
+	}
+
+	// ---- report card renderer -----------------------------------------
+
+	function renderReportCard(data) {
+		var parsed;
+		try {
+			parsed = typeof data === "string" ? JSON.parse(data) : data;
+		} catch (_e) {
+			return null;
+		}
+		var el = document.createElement("div");
+		el.className = "report-card";
+
+		// Header
+		var header = document.createElement("div");
+		header.className = "rc-header";
+		var title = document.createElement("h4");
+		title.className = "rc-title";
+		title.textContent = parsed.student_name || "Report Card";
+		header.appendChild(title);
+		var meta = document.createElement("div");
+		meta.className = "rc-meta";
+		var metaItems = [];
+		if (parsed.academic_year) metaItems.push(parsed.academic_year);
+		if (parsed.academic_term) metaItems.push(parsed.academic_term);
+		if (parsed.student_group) metaItems.push("Grade: " + parsed.student_group);
+		meta.textContent = metaItems.join(" \u00b7 ");
+		header.appendChild(meta);
+		el.appendChild(header);
+
+		// Summary row: average + rank
+		var summary = document.createElement("div");
+		summary.className = "rc-summary";
+		if (parsed.term_average != null) {
+			var avg = document.createElement("div");
+			avg.className = "rc-avg";
+			avg.innerHTML =
+				"<span class=\"rc-avg-value\">" +
+				Number(parsed.term_average).toFixed(1) +
+				"%</span><span class=\"rc-avg-label\">Average</span>";
+			summary.appendChild(avg);
+		}
+		if (parsed.rank_in_group != null) {
+			var rank = document.createElement("div");
+			rank.className = "rc-rank";
+			rank.innerHTML =
+				"<span class=\"rc-rank-value\">" +
+				parsed.rank_in_group +
+				"</span><span class=\"rc-rank-label\">Rank</span>";
+			summary.appendChild(rank);
+		}
+		el.appendChild(summary);
+
+		// Courses table
+		if (parsed.courses && parsed.courses.length) {
+			var table = document.createElement("table");
+			table.className = "rc-table";
+			var thead = document.createElement("thead");
+			thead.innerHTML = "<tr><th>Subject</th><th>Score</th><th>%</th></tr>";
+			table.appendChild(thead);
+			var tbody = document.createElement("tbody");
+			parsed.courses.forEach(function (c) {
+				var tr = document.createElement("tr");
+				tr.innerHTML =
+					"<td>" + (c.course || "") + "</td>" +
+					"<td>" +
+					(c.score != null ? Number(c.score).toFixed(0) : "-") +
+					" / " +
+					(c.maximum != null ? Number(c.maximum).toFixed(0) : "-") +
+					"</td>" +
+					"<td>" +
+					(c.percentage != null ? Number(c.percentage).toFixed(0) + "%" : "-") +
+					"</td>";
+				tbody.appendChild(tr);
+			});
+			table.appendChild(tbody);
+			el.appendChild(table);
+		}
+
+		return el;
 	}
 
 	// ---- render --------------------------------------------------------
@@ -220,7 +297,7 @@
 			"</svg></div>";
 		var title = document.createElement("h3");
 		title.className = "state-title";
-		title.textContent = "Checking…";
+		title.textContent = "Checking\u2026";
 		el.appendChild(title);
 		$result.appendChild(el);
 	}
@@ -259,13 +336,28 @@
 			}
 		}
 
+		// Inject report card display for verified/tampered states
+		if (payload.reportCardData) {
+			var rcEl = renderReportCard(payload.reportCardData);
+			if (rcEl) {
+				var wrapper = document.createElement("div");
+				wrapper.className = "report-card-wrap";
+				wrapper.appendChild(rcEl);
+				var again = node.querySelector(".again");
+				if (again && again.parentNode) {
+					again.parentNode.insertBefore(wrapper, again);
+				} else {
+					node.appendChild(wrapper);
+				}
+			}
+		}
+
 		var again = node.querySelector(".again");
 		if (again) again.addEventListener("click", resetForNext);
 
 		$result.hidden = false;
 		$result.textContent = "";
 		$result.appendChild(node);
-		// Scroll the result into view on mobile.
 		$result.scrollIntoView({ behavior: "smooth", block: "nearest" });
 	}
 

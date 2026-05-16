@@ -11,6 +11,7 @@
   "created_on",
   "column_break_lbjb",
   "content_hash",
+  "report_card_data",
   "valid_until",
   "section_break_xxeh",
   "ref_doctype",
@@ -104,6 +105,13 @@
    "label": "Content Hash (SHA-256)",
    "read_only": 1,
    "description": "SHA-256 of document content captured at sign time. Used for tamper detection."
+  },
+  {
+   "fieldname": "report_card_data",
+   "fieldtype": "Long Text",
+   "label": "Report Card Data",
+   "read_only": 1,
+   "description": "JSON snapshot of report card fields captured at sign time, for public verification display."
   },
   {
    "fieldname": "valid_until",
