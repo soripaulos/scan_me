@@ -134,6 +134,7 @@ class ScanMeAdvancedPrint {
                         <div class="sm-ap-section-title">${__("Print Setup")}</div>
                         <div data-ap-field="print_format"></div>
                         <div data-ap-field="letter_head"></div>
+                        <div data-ap-field="orientation"></div>
                         <div data-ap-field="language"></div>
                         <div data-ap-field="attach_to_doc"></div>
                     </div>
@@ -160,6 +161,11 @@ class ScanMeAdvancedPrint {
                     <div class="sm-ap-section" data-section="signature">
                         <div class="sm-ap-section-title">${__("Signature")}</div>
                         <div data-ap-field="apply_signature"></div>
+                        <div class="sm-ap-pades-hint" hidden>
+                            🔒 ${__(
+								"Final PDF will be cryptographically signed (PAdES). Adobe Reader will show the signature panel — no visual stamp is drawn on the page."
+							)}
+                        </div>
                     </div>
                 </aside>
                 <section class="sm-ap-main">
@@ -228,6 +234,13 @@ class ScanMeAdvancedPrint {
 			label: __("Letter Head"),
 			options: "Letter Head",
 			default: defaults.letter_head,
+		});
+		this.make_field("orientation", {
+			fieldtype: "Select",
+			fieldname: "orientation",
+			label: __("Orientation"),
+			options: ["Portrait", "Landscape"],
+			default: "Portrait",
 		});
 		this.make_field("language", {
 			fieldtype: "Link",
@@ -359,6 +372,13 @@ class ScanMeAdvancedPrint {
 			f.df.change = () => this.on_field_change();
 		});
 		this.refresh_depends_on();
+		this.update_pades_hint();
+		this.update_orientation_class();
+	}
+
+	update_orientation_class() {
+		const v = this.fields_dict.orientation && this.fields_dict.orientation.get_value();
+		this.$wrapper.find(".sm-ap-iframe").toggleClass("sm-ap-landscape", v === "Landscape");
 	}
 
 	make_field(key, df) {
@@ -383,7 +403,22 @@ class ScanMeAdvancedPrint {
 
 	on_field_change() {
 		this.refresh_depends_on();
+		this.update_pades_hint();
+		this.update_orientation_class();
 		this.schedule_preview();
+	}
+
+	update_pades_hint() {
+		// Hint is meaningful only when (a) Apply Signature is on, (b) the
+		// configured signature_type involves PAdES, and (c) the admin master
+		// switch enable_pades_signing is on — otherwise PAdES silently downgrades.
+		const values = this.collect_values();
+		const sig_type = (this.settings && this.settings.signature_type) || "Visual Block";
+		const pades_enabled = !!(this.settings && this.settings.enable_pades_signing);
+		const apply = !!values.apply_signature;
+		const wants_pades = sig_type === "Cryptographic (PAdES)" || sig_type === "Both";
+		const show = apply && wants_pades && pades_enabled;
+		this.$wrapper.find(".sm-ap-pades-hint").prop("hidden", !show);
 	}
 
 	refresh_depends_on() {
@@ -435,6 +470,7 @@ class ScanMeAdvancedPrint {
 		return {
 			copy_count: parseInt(v.copy_count || "1", 10),
 			copy_labels: v.copy_labels || "",
+			orientation: v.orientation || "Portrait",
 			header_mode: v.header_mode || "All pages",
 			footer_mode: v.footer_mode || "All pages",
 			include_qr: v.include_qr ? 1 : 0,
@@ -605,6 +641,17 @@ const SM_AP_CSS = `
 .sm-ap-section .frappe-control:last-child {
     margin-bottom: 0;
 }
+.sm-ap-pades-hint {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: var(--bg-blue-50, #eff6ff);
+    border: 1px solid var(--blue-200, #bfdbfe);
+    border-radius: 6px;
+    color: var(--blue-700, #1d4ed8);
+    font-size: 12px;
+    line-height: 1.4;
+}
+.sm-ap-pades-hint[hidden] { display: none; }
 
 .sm-ap-main { position: relative; }
 .sm-ap-preview-wrap {
@@ -621,6 +668,7 @@ const SM_AP_CSS = `
 .sm-ap-iframe {
     width: 100%;
     max-width: 900px;
+    transition: max-width 0.2s ease;
     min-height: calc(100vh - 180px);
     height: calc(100vh - 180px);
     border: 0;
@@ -628,6 +676,11 @@ const SM_AP_CSS = `
     border-radius: 4px;
     box-shadow: 0 2px 12px rgba(15, 23, 42, 0.1);
     display: block;
+}
+/* Landscape A4 is ~1.41× wider than portrait — give the preview room to fill
+   the main column instead of staying boxed at the portrait width. */
+.sm-ap-iframe.sm-ap-landscape {
+    max-width: 1240px;
 }
 
 .sm-ap-badge {
