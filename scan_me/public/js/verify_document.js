@@ -204,6 +204,122 @@
 
 	// ---- report card renderer -----------------------------------------
 
+	// Grade badge thresholds \u2014 mirror the print format's scale.
+	function gradeFor(pct) {
+		if (pct == null) return null;
+		var p = Number(pct);
+		if (p >= 95) return { label: "A+", cls: "g-ap" };
+		if (p >= 90) return { label: "A", cls: "g-a" };
+		if (p >= 85) return { label: "B+", cls: "g-bp" };
+		if (p >= 80) return { label: "B", cls: "g-b" };
+		if (p >= 70) return { label: "C", cls: "g-c" };
+		if (p >= 60) return { label: "D", cls: "g-d" };
+		return { label: "F", cls: "g-f" };
+	}
+
+	function makeStat(valueText, labelText, cls) {
+		var box = document.createElement("div");
+		box.className = cls;
+		var v = document.createElement("span");
+		v.className = cls === "rc-rank" ? "rc-rank-value" : "rc-avg-value";
+		v.textContent = valueText;
+		var l = document.createElement("span");
+		l.className = cls === "rc-rank" ? "rc-rank-label" : "rc-avg-label";
+		l.textContent = labelText;
+		box.appendChild(v);
+		box.appendChild(l);
+		return box;
+	}
+
+	function makeCoursesTable(courses) {
+		var table = document.createElement("table");
+		table.className = "rc-table";
+		var thead = document.createElement("thead");
+		var htr = document.createElement("tr");
+		["Subject", "Score", "Grade"].forEach(function (h) {
+			var th = document.createElement("th");
+			th.textContent = h;
+			htr.appendChild(th);
+		});
+		thead.appendChild(htr);
+		table.appendChild(thead);
+
+		var tbody = document.createElement("tbody");
+		courses.forEach(function (c) {
+			var tr = document.createElement("tr");
+
+			var tdSubject = document.createElement("td");
+			tdSubject.textContent = c.course || "";
+			tr.appendChild(tdSubject);
+
+			var tdScore = document.createElement("td");
+			tdScore.textContent =
+				(c.score != null ? Number(c.score).toFixed(0) : "-") +
+				" / " +
+				(c.maximum != null ? Number(c.maximum).toFixed(0) : "-");
+			tr.appendChild(tdScore);
+
+			var tdGrade = document.createElement("td");
+			var g = gradeFor(c.percentage);
+			if (g) {
+				var badge = document.createElement("span");
+				badge.className = "rc-grade-badge " + g.cls;
+				badge.textContent = g.label;
+				tdGrade.appendChild(badge);
+			} else {
+				tdGrade.textContent = "-";
+			}
+			tr.appendChild(tdGrade);
+
+			tbody.appendChild(tr);
+		});
+		table.appendChild(tbody);
+		return table;
+	}
+
+	function makeRemark(label, text) {
+		var block = document.createElement("div");
+		block.className = "rc-remark";
+		var strong = document.createElement("strong");
+		strong.textContent = label + " ";
+		block.appendChild(strong);
+		block.appendChild(document.createTextNode(text));
+		return block;
+	}
+
+	// Render one term/year block: title, average + rank, courses, remarks.
+	function makeReportSection(opts) {
+		var section = document.createElement("div");
+		section.className = "rc-section";
+
+		var head = document.createElement("div");
+		head.className = "rc-section-head";
+		head.textContent = opts.title;
+		section.appendChild(head);
+
+		var summary = document.createElement("div");
+		summary.className = "rc-summary";
+		if (opts.average != null) {
+			summary.appendChild(
+				makeStat(Number(opts.average).toFixed(1) + "%", opts.averageLabel, "rc-avg")
+			);
+		}
+		if (opts.rank != null) {
+			summary.appendChild(makeStat(String(opts.rank), "Rank", "rc-rank"));
+		}
+		if (summary.childNodes.length) section.appendChild(summary);
+
+		if (opts.courses && opts.courses.length) {
+			section.appendChild(makeCoursesTable(opts.courses));
+		}
+
+		(opts.remarks || []).forEach(function (r) {
+			if (r[1]) section.appendChild(makeRemark(r[0], r[1]));
+		});
+
+		return section;
+	}
+
 	function renderReportCard(data) {
 		var parsed;
 		try {
@@ -211,10 +327,16 @@
 		} catch (_e) {
 			return null;
 		}
+
+		var hasSections =
+			(parsed.semesters && parsed.semesters.length) ||
+			(parsed.year_reports && parsed.year_reports.length);
+		if (!hasSections && !(parsed.courses && parsed.courses.length)) return null;
+
 		var el = document.createElement("div");
 		el.className = "report-card";
 
-		// Header
+		// Header: student name + ID + grade/section
 		var header = document.createElement("div");
 		header.className = "rc-header";
 		var title = document.createElement("h4");
@@ -224,60 +346,58 @@
 		var meta = document.createElement("div");
 		meta.className = "rc-meta";
 		var metaItems = [];
-		if (parsed.academic_year) metaItems.push(parsed.academic_year);
-		if (parsed.academic_term) metaItems.push(parsed.academic_term);
+		if (parsed.student_id) metaItems.push("ID: " + parsed.student_id);
 		if (parsed.student_group) metaItems.push("Grade: " + parsed.student_group);
+		if (parsed.academic_year) metaItems.push(parsed.academic_year);
 		meta.textContent = metaItems.join(" \u00b7 ");
 		header.appendChild(meta);
 		el.appendChild(header);
 
-		// Summary row: average + rank
-		var summary = document.createElement("div");
-		summary.className = "rc-summary";
-		if (parsed.term_average != null) {
-			var avg = document.createElement("div");
-			avg.className = "rc-avg";
-			avg.innerHTML =
-				"<span class=\"rc-avg-value\">" +
-				Number(parsed.term_average).toFixed(1) +
-				"%</span><span class=\"rc-avg-label\">Average</span>";
-			summary.appendChild(avg);
-		}
-		if (parsed.rank_in_group != null) {
-			var rank = document.createElement("div");
-			rank.className = "rc-rank";
-			rank.innerHTML =
-				"<span class=\"rc-rank-value\">" +
-				parsed.rank_in_group +
-				"</span><span class=\"rc-rank-label\">Rank</span>";
-			summary.appendChild(rank);
-		}
-		el.appendChild(summary);
+		// Semester sections
+		(parsed.semesters || []).forEach(function (sem) {
+			var titleParts = [];
+			if (sem.academic_term) titleParts.push(sem.academic_term);
+			if (sem.academic_year) titleParts.push(sem.academic_year);
+			el.appendChild(
+				makeReportSection({
+					title: titleParts.join(" \u2014 ") || "Semester",
+					average: sem.term_average,
+					averageLabel: "Average",
+					rank: sem.rank_in_group,
+					courses: sem.courses,
+					remarks: [
+						["1st Semester Remarks:", sem.first_semester_remarks],
+						["2nd Semester Remarks:", sem.second_semester_remarks],
+						["Final Result:", sem.final_result],
+					],
+				})
+			);
+		});
 
-		// Courses table
-		if (parsed.courses && parsed.courses.length) {
-			var table = document.createElement("table");
-			table.className = "rc-table";
-			var thead = document.createElement("thead");
-			thead.innerHTML = "<tr><th>Subject</th><th>Score</th><th>%</th></tr>";
-			table.appendChild(thead);
-			var tbody = document.createElement("tbody");
-			parsed.courses.forEach(function (c) {
-				var tr = document.createElement("tr");
-				tr.innerHTML =
-					"<td>" + (c.course || "") + "</td>" +
-					"<td>" +
-					(c.score != null ? Number(c.score).toFixed(0) : "-") +
-					" / " +
-					(c.maximum != null ? Number(c.maximum).toFixed(0) : "-") +
-					"</td>" +
-					"<td>" +
-					(c.percentage != null ? Number(c.percentage).toFixed(0) + "%" : "-") +
-					"</td>";
-				tbody.appendChild(tr);
-			});
-			table.appendChild(tbody);
-			el.appendChild(table);
+		// Year report sections
+		(parsed.year_reports || []).forEach(function (yr) {
+			el.appendChild(
+				makeReportSection({
+					title: "Year Report" + (yr.academic_year ? " \u2014 " + yr.academic_year : ""),
+					average: yr.year_average,
+					averageLabel: "Year Average",
+					rank: yr.rank_in_group,
+					courses: yr.courses,
+				})
+			);
+		});
+
+		// Legacy flat single-term snapshot fallback.
+		if (!hasSections && parsed.courses && parsed.courses.length) {
+			el.appendChild(
+				makeReportSection({
+					title: parsed.academic_term || "Results",
+					average: parsed.term_average,
+					averageLabel: "Average",
+					rank: parsed.rank_in_group,
+					courses: parsed.courses,
+				})
+			);
 		}
 
 		return el;

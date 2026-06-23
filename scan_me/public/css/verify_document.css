@@ -411,3 +411,52 @@ html, body {
 .report-card .rc-table tr:last-child td {
     border-bottom: none;
 }
+
+/* Per-semester / per-year sections */
+.report-card .rc-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+.report-card .rc-section:first-of-type {
+    margin-top: 12px;
+}
+.report-card .rc-section-head {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+/* Grade badge in the courses table */
+.report-card .rc-grade-badge {
+    display: inline-block;
+    min-width: 26px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+}
+.report-card .rc-grade-badge.g-ap { background: #1a7a3a; }
+.report-card .rc-grade-badge.g-a  { background: #27ae60; }
+.report-card .rc-grade-badge.g-bp { background: #2170a5; }
+.report-card .rc-grade-badge.g-b  { background: #2980b9; }
+.report-card .rc-grade-badge.g-c  { background: #e67e22; }
+.report-card .rc-grade-badge.g-d  { background: #c0392b; }
+.report-card .rc-grade-badge.g-f  { background: #922b21; }
+
+/* Remark blocks */
+.report-card .rc-remark {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--text);
+}
+.report-card .rc-remark strong {
+    color: var(--warn);
+}

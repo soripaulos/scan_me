@@ -35,10 +35,21 @@ def _lookup_user_signature(user):
 
 
 # --- report card data snapshot -------------------------------------
-# For Student Term Report, capture field values at sign time so the
-# public verify page can display them without needing read permission
-# on the source document. Extensible to other doctypes later.
+# Capture field values at sign time so the public verify page can display
+# them without needing read permission on the source document. The printed
+# "Student Report Card - Comprehensive" format is built on the Student
+# doctype, so that is the primary case; the Student Term Report branch is
+# kept for backward compatibility.
 def _capture_report_card_data(doctype, docname):
+	if doctype == "Student":
+		from scan_me.utils.report_card_snapshot import build_student_report_card_snapshot
+
+		try:
+			snapshot = build_student_report_card_snapshot(docname)
+			return frappe.as_json(snapshot) if snapshot else None
+		except Exception:
+			return None
+
 	if doctype != "Student Term Report":
 		return None
 	try:
