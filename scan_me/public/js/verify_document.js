@@ -110,7 +110,7 @@
 	}
 
 	function setScanButton(running) {
-		$scanLabel.textContent = running ? "Scanning\u2026" : "Scan QR Code";
+		$scanLabel.textContent = running ? "Scanning…" : "Scan QR Code";
 		$scanBtn.disabled = running;
 		$stopBtn.hidden = !running;
 	}
@@ -204,17 +204,37 @@
 
 	// ---- report card renderer -----------------------------------------
 
-	// Grade badge thresholds \u2014 mirror the print format's scale.
+	// Returns true for Nursery / LKG / UKG student groups.
+	// These groups show grade letters (A+/A/B+...) but NOT rank.
+	// All other groups (Grade 1, Grade 2 ...) hide grade letters but show rank.
+	function isPreGrade(studentGroup) {
+		var sg = (studentGroup || "").toLowerCase();
+		return sg.indexOf("nursery") === 0 || sg.indexOf("lkg") === 0 || sg.indexOf("ukg") === 0;
+	}
+
+	// Grade badge thresholds — mirror the print format's scale.
 	function gradeFor(pct) {
 		if (pct == null) return null;
 		var p = Number(pct);
 		if (p >= 95) return { label: "A+", cls: "g-ap" };
-		if (p >= 90) return { label: "A", cls: "g-a" };
+		if (p >= 90) return { label: "A",  cls: "g-a" };
 		if (p >= 85) return { label: "B+", cls: "g-bp" };
-		if (p >= 80) return { label: "B", cls: "g-b" };
-		if (p >= 70) return { label: "C", cls: "g-c" };
-		if (p >= 60) return { label: "D", cls: "g-d" };
+		if (p >= 80) return { label: "B",  cls: "g-b" };
+		if (p >= 70) return { label: "C",  cls: "g-c" };
+		if (p >= 60) return { label: "D",  cls: "g-d" };
 		return { label: "F", cls: "g-f" };
+	}
+
+	function resultLabel(avg) {
+		if (avg == null) return null;
+		var p = Number(avg);
+		if (p >= 95) return "Super";
+		if (p >= 90) return "Great Distinction";
+		if (p >= 85) return "Distinction";
+		if (p >= 75) return "Excellent";
+		if (p >= 70) return "Very Good";
+		if (p >= 60) return "Satisfactory";
+		return "Unsatisfactory";
 	}
 
 	function makeStat(valueText, labelText, cls) {
@@ -231,12 +251,16 @@
 		return box;
 	}
 
-	function makeCoursesTable(courses) {
+	// Build a courses table. showGrade=true adds the Grade column (for Nursery/LKG/UKG).
+	// Includes a bold total row at the bottom.
+	function makeCoursesTable(courses, showGrade) {
 		var table = document.createElement("table");
 		table.className = "rc-table";
+
 		var thead = document.createElement("thead");
 		var htr = document.createElement("tr");
-		["Subject", "Score", "Grade"].forEach(function (h) {
+		var headers = showGrade ? ["Subject", "Score", "Grade"] : ["Subject", "Score"];
+		headers.forEach(function (h) {
 			var th = document.createElement("th");
 			th.textContent = h;
 			htr.appendChild(th);
@@ -245,6 +269,9 @@
 		table.appendChild(thead);
 
 		var tbody = document.createElement("tbody");
+		var totalScore = 0;
+		var totalMax = 0;
+
 		courses.forEach(function (c) {
 			var tr = document.createElement("tr");
 
@@ -252,27 +279,51 @@
 			tdSubject.textContent = c.course || "";
 			tr.appendChild(tdSubject);
 
+			var score = c.score != null ? Number(c.score) : null;
+			var max = c.maximum != null ? Number(c.maximum) : null;
+			if (score != null) totalScore += score;
+			if (max != null) totalMax += max;
+
 			var tdScore = document.createElement("td");
 			tdScore.textContent =
-				(c.score != null ? Number(c.score).toFixed(0) : "-") +
+				(score != null ? score.toFixed(0) : "-") +
 				" / " +
-				(c.maximum != null ? Number(c.maximum).toFixed(0) : "-");
+				(max != null ? max.toFixed(0) : "-");
 			tr.appendChild(tdScore);
 
-			var tdGrade = document.createElement("td");
-			var g = gradeFor(c.percentage);
-			if (g) {
-				var badge = document.createElement("span");
-				badge.className = "rc-grade-badge " + g.cls;
-				badge.textContent = g.label;
-				tdGrade.appendChild(badge);
-			} else {
-				tdGrade.textContent = "-";
+			if (showGrade) {
+				var tdGrade = document.createElement("td");
+				var g = gradeFor(c.percentage);
+				if (g) {
+					var badge = document.createElement("span");
+					badge.className = "rc-grade-badge " + g.cls;
+					badge.textContent = g.label;
+					tdGrade.appendChild(badge);
+				} else {
+					tdGrade.textContent = "-";
+				}
+				tr.appendChild(tdGrade);
 			}
-			tr.appendChild(tdGrade);
 
 			tbody.appendChild(tr);
 		});
+
+		// Total row
+		var totalTr = document.createElement("tr");
+		totalTr.className = "rc-total-row";
+		var tdLabel = document.createElement("td");
+		tdLabel.textContent = "Total";
+		totalTr.appendChild(tdLabel);
+		var tdTotal = document.createElement("td");
+		tdTotal.textContent = totalScore.toFixed(0) + " / " + totalMax.toFixed(0);
+		totalTr.appendChild(tdTotal);
+		if (showGrade) {
+			var tdBlank = document.createElement("td");
+			tdBlank.textContent = "—";
+			totalTr.appendChild(tdBlank);
+		}
+		tbody.appendChild(totalTr);
+
 		table.appendChild(tbody);
 		return table;
 	}
@@ -287,7 +338,7 @@
 		return block;
 	}
 
-	// Render one term/year block: title, average + rank, courses, remarks.
+	// Render one term/year block: title → courses table → total → average+rank → remarks.
 	function makeReportSection(opts) {
 		var section = document.createElement("div");
 		section.className = "rc-section";
@@ -297,22 +348,25 @@
 		head.textContent = opts.title;
 		section.appendChild(head);
 
+		// Courses table (with total row at the bottom)
+		if (opts.courses && opts.courses.length) {
+			section.appendChild(makeCoursesTable(opts.courses, opts.showGrade));
+		}
+
+		// Average + rank BELOW the table (after the total row)
 		var summary = document.createElement("div");
 		summary.className = "rc-summary";
 		if (opts.average != null) {
 			summary.appendChild(
-				makeStat(Number(opts.average).toFixed(1) + "%", opts.averageLabel, "rc-avg")
+				makeStat(Number(opts.average).toFixed(1) + "%", opts.averageLabel || "Average", "rc-avg")
 			);
 		}
-		if (opts.rank != null) {
+		if (opts.showRank && opts.rank != null) {
 			summary.appendChild(makeStat(String(opts.rank), "Rank", "rc-rank"));
 		}
 		if (summary.childNodes.length) section.appendChild(summary);
 
-		if (opts.courses && opts.courses.length) {
-			section.appendChild(makeCoursesTable(opts.courses));
-		}
-
+		// Remarks
 		(opts.remarks || []).forEach(function (r) {
 			if (r[1]) section.appendChild(makeRemark(r[0], r[1]));
 		});
@@ -333,23 +387,31 @@
 			(parsed.year_reports && parsed.year_reports.length);
 		if (!hasSections && !(parsed.courses && parsed.courses.length)) return null;
 
+		// Determine grade-level rules from the top-level student_group.
+		var preGrade = isPreGrade(parsed.student_group);
+		// Pre-grade (Nursery/LKG/UKG): show grade letters, hide rank.
+		// Grade-X: hide grade letters, show rank.
+		var showGrade = preGrade;
+		var showRank = !preGrade;
+
 		var el = document.createElement("div");
 		el.className = "report-card";
 
-		// Header: student name + ID + grade/section
+		// Header: student name + IDs + grade/section
 		var header = document.createElement("div");
 		header.className = "rc-header";
 		var title = document.createElement("h4");
 		title.className = "rc-title";
 		title.textContent = parsed.student_name || "Report Card";
 		header.appendChild(title);
+
 		var meta = document.createElement("div");
 		meta.className = "rc-meta";
 		var metaItems = [];
 		if (parsed.student_id) metaItems.push("ID: " + parsed.student_id);
-		if (parsed.student_group) metaItems.push("Grade: " + parsed.student_group);
-		if (parsed.academic_year) metaItems.push(parsed.academic_year);
-		meta.textContent = metaItems.join(" \u00b7 ");
+		if (parsed.government_student_id) metaItems.push("Govt. ID: " + parsed.government_student_id);
+		if (parsed.student_group) metaItems.push(parsed.student_group);
+		meta.textContent = metaItems.join(" · ");
 		header.appendChild(meta);
 		el.appendChild(header);
 
@@ -360,12 +422,15 @@
 			if (sem.academic_year) titleParts.push(sem.academic_year);
 			el.appendChild(
 				makeReportSection({
-					title: titleParts.join(" \u2014 ") || "Semester",
+					title: titleParts.join(" — ") || "Semester",
 					average: sem.term_average,
 					averageLabel: "Average",
 					rank: sem.rank_in_group,
+					showGrade: showGrade,
+					showRank: showRank,
 					courses: sem.courses,
 					remarks: [
+						["Remark:", sem.remark],
 						["1st Semester Remarks:", sem.first_semester_remarks],
 						["2nd Semester Remarks:", sem.second_semester_remarks],
 						["Final Result:", sem.final_result],
@@ -378,16 +443,19 @@
 		(parsed.year_reports || []).forEach(function (yr) {
 			el.appendChild(
 				makeReportSection({
-					title: "Year Report" + (yr.academic_year ? " \u2014 " + yr.academic_year : ""),
+					title: "Year Report" + (yr.academic_year ? " — " + yr.academic_year : ""),
 					average: yr.year_average,
 					averageLabel: "Year Average",
 					rank: yr.rank_in_group,
+					showGrade: showGrade,
+					showRank: showRank,
 					courses: yr.courses,
+					remarks: [["Remark:", yr.remark]],
 				})
 			);
 		});
 
-		// Legacy flat single-term snapshot fallback.
+		// Legacy flat single-term snapshot fallback (Student Term Report signing path).
 		if (!hasSections && parsed.courses && parsed.courses.length) {
 			el.appendChild(
 				makeReportSection({
@@ -395,6 +463,8 @@
 					average: parsed.term_average,
 					averageLabel: "Average",
 					rank: parsed.rank_in_group,
+					showGrade: showGrade,
+					showRank: showRank,
 					courses: parsed.courses,
 				})
 			);
@@ -417,7 +487,7 @@
 			"</svg></div>";
 		var title = document.createElement("h3");
 		title.className = "state-title";
-		title.textContent = "Checking\u2026";
+		title.textContent = "Checking…";
 		el.appendChild(title);
 		$result.appendChild(el);
 	}

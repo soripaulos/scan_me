@@ -6,10 +6,10 @@ The snapshot is captured at QR sign time and stored on ``Verified QR.report_card
 so the public ``/verify_document`` page can display a student's academic results to
 guests WITHOUT granting any read permission on the locked source doctypes.
 
-Scope is deliberately "academic + basic identity" — name, Student ID, grade/section and
-all term/year results. Personal details shown on the printed card but irrelevant to a
-public authenticity check (date of birth, age, gender, home address, photo) are
-intentionally excluded so a leaked QR can't expose a minor's PII.
+Scope is deliberately "academic + basic identity" — name, Student ID, government ID,
+grade/section and all term/year results. Personal details shown on the printed card
+but irrelevant to a public authenticity check (date of birth, age, gender, home
+address, photo) are intentionally excluded so a leaked QR can't expose a minor's PII.
 
 Queries mirror the ``Student Report Card - Comprehensive`` print format (doctype
 ``Student``) so the web page matches the paper.
@@ -72,7 +72,8 @@ def build_student_report_card_snapshot(student_name):
 	"""
 	terms = frappe.db.sql(
 		"""SELECT name, academic_year, academic_term, term_average, rank_in_group, student_group,
-			  custom_first_semester_remarks, custom_second_semester_remarks, custom_final_result
+			  custom_first_semester_remarks, custom_second_semester_remarks, custom_final_result,
+			  custom_remark
 		   FROM `tabStudent Term Report`
 		   WHERE student = %s
 		   ORDER BY academic_year ASC, """
@@ -81,7 +82,7 @@ def build_student_report_card_snapshot(student_name):
 		as_dict=True,
 	)
 	years = frappe.db.sql(
-		"""SELECT name, academic_year, year_average, rank_in_group
+		"""SELECT name, academic_year, year_average, rank_in_group, custom_remark
 		   FROM `tabStudent Year Report`
 		   WHERE student = %s
 		   ORDER BY academic_year ASC""",
@@ -100,6 +101,7 @@ def build_student_report_card_snapshot(student_name):
 				"academic_term": t.academic_term,
 				"term_average": t.term_average,
 				"rank_in_group": t.rank_in_group,
+				"remark": t.custom_remark or None,
 				"first_semester_remarks": t.custom_first_semester_remarks,
 				"second_semester_remarks": t.custom_second_semester_remarks,
 				"final_result": t.custom_final_result,
@@ -114,17 +116,24 @@ def build_student_report_card_snapshot(student_name):
 				"academic_year": y.academic_year,
 				"year_average": y.year_average,
 				"rank_in_group": y.rank_in_group,
+				"remark": y.custom_remark or None,
 				"courses": _year_courses(y.name),
 			}
 		)
 
-	student_name_value = frappe.db.get_value("Student", student_name, "student_name")
+	student_row = frappe.db.get_value(
+		"Student",
+		student_name,
+		["student_name", "custom_government_student_id"],
+		as_dict=True,
+	)
 	# Grade/section: the print format takes it from the first term report row.
 	student_group = terms[0].student_group if terms else None
 
 	return {
-		"student_name": student_name_value,
+		"student_name": student_row.student_name if student_row else None,
 		"student_id": student_name,
+		"government_student_id": (student_row.custom_government_student_id or None) if student_row else None,
 		"student_group": student_group,
 		"semesters": semesters,
 		"year_reports": year_reports,

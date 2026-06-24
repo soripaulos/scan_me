@@ -1,11 +1,10 @@
 # Copyright (c) 2025, Tushar Patel and contributors
 # For license information, please see license.txt
-"""Backfill report_card_data on existing Student Verified QRs.
+"""Backfill/refresh report_card_data on all Student Verified QRs.
 
-QRs signed before the Student snapshot capture existed have an empty
-``report_card_data`` field, so the public verify page shows only the date. This
-populates them from the current academic records so they display immediately.
-``update_modified=False`` keeps the content hash / tamper state untouched.
+Re-runs for every Student-type Verified QR so new snapshot fields (government_student_id,
+per-term/year remark) are populated retroactively. ``update_modified=False`` keeps the
+content hash and tamper-detection state untouched.
 """
 
 import frappe
@@ -16,10 +15,7 @@ from scan_me.utils.report_card_snapshot import build_student_report_card_snapsho
 def execute():
 	rows = frappe.get_all(
 		"Verified QR",
-		filters={
-			"ref_doctype": "Student",
-			"report_card_data": ["in", [None, ""]],
-		},
+		filters={"ref_doctype": "Student"},
 		fields=["name", "ref_docname"],
 	)
 	for row in rows:
@@ -36,3 +32,4 @@ def execute():
 			frappe.as_json(snapshot),
 			update_modified=False,
 		)
+	frappe.db.commit()

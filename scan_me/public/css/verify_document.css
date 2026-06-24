@@ -460,3 +460,12 @@ html, body {
 .report-card .rc-remark strong {
     color: var(--warn);
 }
+
+/* Total row at the bottom of the courses table */
+.report-card .rc-total-row td {
+    background: var(--muted-bg);
+    font-weight: 700;
+    border-top: 2px solid var(--border-strong);
+    border-bottom: none;
+    padding: 6px 8px;
+}
