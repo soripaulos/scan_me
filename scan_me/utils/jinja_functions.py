@@ -261,3 +261,37 @@ def verify_qr_img(
 	if not src:
 		return ""
 	return f'<img class="scan-me-qr" src="{src}" style="width:{safe_size}; height:{safe_size};">'
+
+
+# School stamp for print formats — bundled PNG asset emitted inline as a base64 data URI.
+# Reading the committed file and encoding server-side (the same approach as the QR helpers
+# above) keeps the image embedded in the rendered HTML/PDF while avoiding the corruption
+# that hand-pasting a large base64 blob into a print format's HTML caused.
+_STAMP_REL_PATH = ("public", "images", "mbs_stamp.png")
+_stamp_data_uri_cache = None
+
+
+def _stamp_data_uri() -> str:
+	"""Return the bundled stamp PNG as ``data:image/png;base64,…`` (cached), or "" on error."""
+	global _stamp_data_uri_cache
+	if _stamp_data_uri_cache is None:
+		try:
+			path = frappe.get_app_path("scan_me", *_STAMP_REL_PATH)
+			with open(path, "rb") as f:
+				_stamp_data_uri_cache = f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+		except Exception:
+			_stamp_data_uri_cache = ""
+	return _stamp_data_uri_cache
+
+
+@frappe.whitelist(allow_guest=False)
+def report_card_stamp_img(size: str = "24mm") -> str:
+	"""``<img>`` of the bundled school stamp for print formats; "" if the asset is missing.
+
+	``size`` is regex-validated to block CSS injection, matching the QR image helpers.
+	"""
+	safe_size = _sanitize_css_size(size)
+	src = _stamp_data_uri()
+	if not src:
+		return ""
+	return f'<img class="scan-me-stamp" src="{src}" style="width:{safe_size}; height:{safe_size};">'
