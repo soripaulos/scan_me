@@ -17,6 +17,71 @@ Queries mirror the ``Student Report Card - Comprehensive`` print format (doctype
 
 import frappe
 
+
+def build_report_card_doc_snapshot(card):
+	"""Snapshot a ``Student Report Card`` doc for ``Verified QR.report_card_data``.
+
+	Same output shape as :func:`build_student_report_card_snapshot` so the public
+	verify page renders both without any JS changes. Unlike the Student variant this
+	reads only the signed card itself — the snapshot and the tamper hash therefore
+	cover exactly the same data.
+	"""
+	from scan_me.utils.report_card_generator import YEAR_PERIOD
+
+	def courses_for(period):
+		return [
+			{
+				"course": r.course,
+				"score": r.score,
+				"maximum": r.max_score,
+				"percentage": r.percentage,
+			}
+			for r in (card.get("scores") or [])
+			if r.period == period
+		]
+
+	semesters = [
+		{
+			"academic_year": card.academic_year,
+			"academic_term": s.academic_term,
+			"term_average": s.term_average,
+			"rank_in_group": s.rank_in_group,
+			"remark": s.remark or None,
+			"first_semester_remarks": s.first_semester_remarks,
+			"second_semester_remarks": s.second_semester_remarks,
+			"final_result": s.final_result,
+			"courses": courses_for(s.academic_term),
+		}
+		for s in (card.get("semesters") or [])
+	]
+
+	year_courses = courses_for(YEAR_PERIOD)
+	year_reports = []
+	if card.year_average or year_courses:
+		year_reports.append(
+			{
+				"academic_year": card.academic_year,
+				"year_average": card.year_average,
+				"rank_in_group": card.year_rank,
+				"remark": card.year_remark or None,
+				"courses": year_courses,
+			}
+		)
+
+	if not semesters and not year_reports:
+		return None
+
+	return {
+		"student_name": card.student_name,
+		"student_id": card.student,
+		"government_student_id": card.government_student_id or None,
+		"student_group": card.student_group,
+		"academic_year": card.academic_year,
+		"semesters": semesters,
+		"year_reports": year_reports,
+	}
+
+
 # Semester display order — matches the print format's CASE ordering.
 _TERM_ORDER_SQL = (
 	"CASE academic_term WHEN 'First Semester' THEN 1 WHEN 'Second Semester' THEN 2 ELSE 3 END ASC"

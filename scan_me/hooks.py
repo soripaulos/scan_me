@@ -192,6 +192,13 @@ after_migrate = "scan_me.install.after_migrate"
 # 	],
 # }
 
+scheduler_events = {
+	"daily": [
+		# Keep Student Report Cards in sync with submitted term/year results.
+		"scan_me.utils.report_card_generator.scheduled_sync",
+	],
+}
+
 # Testing
 # -------
 

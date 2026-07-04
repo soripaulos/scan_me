@@ -1,0 +1,84 @@
+{
+ "actions": [],
+ "creation": "2026-07-04 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "academic_term",
+  "term_average",
+  "rank_in_group",
+  "remark",
+  "first_semester_remarks",
+  "second_semester_remarks",
+  "final_result",
+  "source_report"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "academic_term",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Academic Term",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "term_average",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Term Average (%)",
+   "precision": "2"
+  },
+  {
+   "columns": 2,
+   "fieldname": "rank_in_group",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Rank in Section"
+  },
+  {
+   "columns": 3,
+   "fieldname": "remark",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Remark"
+  },
+  {
+   "fieldname": "first_semester_remarks",
+   "fieldtype": "Small Text",
+   "label": "First Semester Remarks"
+  },
+  {
+   "fieldname": "second_semester_remarks",
+   "fieldtype": "Small Text",
+   "label": "Second Semester Remarks"
+  },
+  {
+   "fieldname": "final_result",
+   "fieldtype": "Data",
+   "label": "Final Result"
+  },
+  {
+   "description": "Source Student Term Report this row was generated from.",
+   "fieldname": "source_report",
+   "fieldtype": "Data",
+   "label": "Source Report",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scan Me",
+ "name": "Student Report Card Semester",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

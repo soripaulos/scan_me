@@ -1,0 +1,208 @@
+{
+ "actions": [],
+ "autoname": "format:SRC-{student}-{academic_year}",
+ "creation": "2026-07-04 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "student_name",
+  "column_break_ids",
+  "academic_year",
+  "student_group",
+  "identity_section",
+  "government_student_id",
+  "column_break_gov",
+  "school_id",
+  "semesters_section",
+  "semesters",
+  "scores_section",
+  "scores",
+  "year_section",
+  "year_average",
+  "year_rank",
+  "column_break_year",
+  "year_remark",
+  "meta_section",
+  "last_generated_on",
+  "source_fingerprint"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1,
+   "search_index": 1,
+   "set_only_once": 1
+  },
+  {
+   "fetch_from": "student.student_name",
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ids",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Academic year this report card covers. One report card exists per student per academic year.",
+   "fieldname": "academic_year",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Academic Year",
+   "reqd": 1,
+   "search_index": 1,
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Grade / Section",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Identification"
+  },
+  {
+   "fieldname": "government_student_id",
+   "fieldtype": "Data",
+   "label": "Government Student ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_gov",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school_id",
+   "fieldtype": "Data",
+   "label": "School ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "semesters_section",
+   "fieldtype": "Section Break",
+   "label": "Semester Results"
+  },
+  {
+   "fieldname": "semesters",
+   "fieldtype": "Table",
+   "label": "Semesters",
+   "options": "Student Report Card Semester"
+  },
+  {
+   "fieldname": "scores_section",
+   "fieldtype": "Section Break",
+   "label": "Subject Scores"
+  },
+  {
+   "description": "Flat list of per-subject scores. 'Period' says which semester (or 'Year') a row belongs to.",
+   "fieldname": "scores",
+   "fieldtype": "Table",
+   "label": "Scores",
+   "options": "Student Report Card Score"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "year_section",
+   "fieldtype": "Section Break",
+   "label": "Year Result"
+  },
+  {
+   "fieldname": "year_average",
+   "fieldtype": "Float",
+   "label": "Year Average (%)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "year_rank",
+   "fieldtype": "Int",
+   "label": "Year Rank in Section"
+  },
+  {
+   "fieldname": "column_break_year",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "year_remark",
+   "fieldtype": "Small Text",
+   "label": "Year Remark"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "Generation Info"
+  },
+  {
+   "fieldname": "last_generated_on",
+   "fieldtype": "Datetime",
+   "label": "Last Generated On",
+   "read_only": 1
+  },
+  {
+   "description": "Hash of the source data used at last generation; lets the generator skip unchanged cards.",
+   "fieldname": "source_fingerprint",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Source Fingerprint",
+   "length": 64,
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-07-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scan Me",
+ "name": "Student Report Card",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academics User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "student_name,academic_year,student_group",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name",
+ "track_changes": 1
+}
