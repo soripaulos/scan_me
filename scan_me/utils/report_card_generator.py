@@ -56,13 +56,34 @@ def _dedupe_terms(terms):
 	return list(latest.values())
 
 
-def _fetch_source_rows(academic_year=None, students=None):
+def resolve_student_groups(academic_year=None, program=None, student_group=None):
+	"""Turn a program / student-group selection into a concrete list of group names.
+
+	Returns ``None`` to mean "no group restriction" (whole selection). ``student_group``
+	wins if given; otherwise ``program`` expands to all its groups (scoped to the year
+	when one is given, so groups reused in a future year don't leak in).
+	"""
+	if student_group:
+		return [student_group]
+	if program:
+		filters = {"program": program}
+		if academic_year:
+			filters["academic_year"] = academic_year
+		groups = frappe.get_all("Student Group", filters=filters, pluck="name")
+		# No matching groups → an impossible filter, not "everything".
+		return groups or ["__no_such_group__"]
+	return None
+
+
+def _fetch_source_rows(academic_year=None, students=None, student_groups=None):
 	"""Bulk-load submitted term/year reports and their course child rows."""
 	filters = {"docstatus": 1}
 	if academic_year:
 		filters["academic_year"] = academic_year
 	if students:
 		filters["student"] = ("in", students)
+	if student_groups is not None:
+		filters["student_group"] = ("in", student_groups)
 
 	terms = frappe.get_all(
 		"Student Term Report",
@@ -122,13 +143,15 @@ def _fetch_source_rows(academic_year=None, students=None):
 	return terms, years, term_courses, year_courses
 
 
-def build_payloads(academic_year=None, students=None):
+def build_payloads(academic_year=None, students=None, student_groups=None):
 	"""Return ``{(student, academic_year): payload}`` for every student with results.
 
 	The payload mirrors the Student Report Card field layout: parent scalars plus
 	``semesters`` and ``scores`` child-row lists.
 	"""
-	terms, years, term_courses, year_courses = _fetch_source_rows(academic_year, students)
+	terms, years, term_courses, year_courses = _fetch_source_rows(
+		academic_year, students, student_groups
+	)
 
 	payloads = {}
 
@@ -213,13 +236,13 @@ def _apply_payload(doc, payload, fingerprint):
 	doc.source_fingerprint = fingerprint
 
 
-def sync_report_cards(academic_year=None, students=None):
+def sync_report_cards(academic_year=None, students=None, student_groups=None):
 	"""Upsert Student Report Cards from submitted results. Returns a summary dict.
 
 	Runs with ignore_permissions: callers are gated (scheduler, or the whitelisted
 	wrappers below which check roles/permissions first).
 	"""
-	payloads = build_payloads(academic_year, students)
+	payloads = build_payloads(academic_year, students, student_groups)
 
 	existing = {
 		(r.student, r.academic_year): r
@@ -273,18 +296,40 @@ def scheduled_sync():
 
 
 @frappe.whitelist()
-def enqueue_sync(academic_year=None):
-	"""Manual trigger: rebuild all report cards (optionally one academic year) in the background."""
+def enqueue_sync(academic_year, program=None, student_group=None):
+	"""Manual trigger: rebuild report cards for a scoped selection, in the background.
+
+	``academic_year`` is required (pick from the Academic Year list, not free text).
+	Scope is narrowed by ``program`` (all its student groups) or a single
+	``student_group``; with neither, every group in the year is processed.
+	"""
 	frappe.only_for(("System Manager", "Academics User"))
+	if not academic_year:
+		frappe.throw(frappe._("Select an Academic Year."))
+
+	student_groups = resolve_student_groups(academic_year, program, student_group)
+
 	frappe.enqueue(
 		"scan_me.utils.report_card_generator.sync_report_cards",
 		queue="long",
 		timeout=3600,
-		job_id="scan_me_report_card_sync",
+		job_id=f"scan_me_report_card_sync::{academic_year}::{program or ''}::{student_group or ''}",
 		deduplicate=True,
-		academic_year=academic_year or None,
+		academic_year=academic_year,
+		student_groups=student_groups,
 	)
-	return {"message": "Report card generation started in the background."}
+
+	if student_group:
+		scope = frappe._("student group {0}").format(student_group)
+	elif program:
+		scope = frappe._("program {0} ({1} groups)").format(program, len(student_groups))
+	else:
+		scope = frappe._("all groups")
+	return {
+		"message": frappe._("Report card generation started for {0} in {1}.").format(
+			scope, academic_year
+		)
+	}
 
 
 @frappe.whitelist()

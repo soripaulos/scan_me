@@ -3,20 +3,60 @@
 
 frappe.listview_settings["Student Report Card"] = {
 	onload(listview) {
-		// Rebuild every card from submitted Student Term/Year Reports (background job).
-		listview.page.add_inner_button(__("Generate / Update All"), () => {
-			frappe.prompt(
-				[
+		// Rebuild cards from submitted Student Term/Year Reports (background job),
+		// scoped to a chosen academic year and optionally a program or student group.
+		listview.page.add_inner_button(__("Generate / Update Cards"), () => {
+			const dialog = new frappe.ui.Dialog({
+				title: __("Generate / Update Report Cards"),
+				fields: [
 					{
 						fieldname: "academic_year",
-						fieldtype: "Data",
-						label: __("Academic Year (leave blank for all)"),
+						fieldtype: "Link",
+						label: __("Academic Year"),
+						options: "Academic Year",
+						reqd: 1,
+					},
+					{
+						fieldname: "scope_help",
+						fieldtype: "HTML",
+						options: `<p class="text-muted small">${__(
+							"Narrow to a program or a single student group. Leave both blank to process every group in the year."
+						)}</p>`,
+					},
+					{
+						fieldname: "program",
+						fieldtype: "Link",
+						label: __("Program (optional)"),
+						options: "Program",
+						onchange() {
+							// Reset a now-inconsistent group when the program changes.
+							dialog.set_value("student_group", "");
+						},
+					},
+					{
+						fieldname: "student_group",
+						fieldtype: "Link",
+						label: __("Student Group (optional)"),
+						options: "Student Group",
+						get_query() {
+							const filters = {};
+							const ay = dialog.get_value("academic_year");
+							const program = dialog.get_value("program");
+							if (ay) filters.academic_year = ay;
+							if (program) filters.program = program;
+							return { filters };
+						},
 					},
 				],
-				(values) => {
+				primary_action_label: __("Start"),
+				primary_action(values) {
 					frappe.call({
 						method: "scan_me.utils.report_card_generator.enqueue_sync",
-						args: { academic_year: values.academic_year || null },
+						args: {
+							academic_year: values.academic_year,
+							program: values.program || null,
+							student_group: values.student_group || null,
+						},
 						callback: (r) => {
 							frappe.show_alert({
 								message: (r.message && r.message.message) || __("Generation started."),
@@ -24,10 +64,10 @@ frappe.listview_settings["Student Report Card"] = {
 							});
 						},
 					});
+					dialog.hide();
 				},
-				__("Generate / Update Report Cards"),
-				__("Start")
-			);
+			});
+			dialog.show();
 		});
 
 		// Bulk-sign selected cards with Verified QRs.
