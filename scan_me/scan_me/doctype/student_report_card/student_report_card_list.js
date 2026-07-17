@@ -78,7 +78,20 @@ frappe.listview_settings["Student Report Card"] = {
 				return;
 			}
 
-			const fields = [];
+			const fields = [
+				{
+					fieldname: "director",
+					fieldtype: "Link",
+					label: __("Signing Director"),
+					options: "School Director",
+					get_query() {
+						return { filters: { disabled: 0 } };
+					},
+					description: __(
+						"The director's name, position and signature are printed on each card and covered by the QR's tamper hash."
+					),
+				},
+			];
 			if (frappe.user.has_role("System Manager")) {
 				fields.push({
 					fieldname: "resign",
@@ -91,7 +104,11 @@ frappe.listview_settings["Student Report Card"] = {
 			const run = (values) => {
 				frappe.call({
 					method: "scan_me.utils.report_card_generator.bulk_generate_qr",
-					args: { names: names, resign: (values && values.resign) || 0 },
+					args: {
+						names: names,
+						resign: (values && values.resign) || 0,
+						director: (values && values.director) || null,
+					},
 					freeze: true,
 					freeze_message: __("Generating Verified QRs..."),
 					callback: (r) => {
@@ -109,11 +126,7 @@ frappe.listview_settings["Student Report Card"] = {
 				});
 			};
 
-			if (fields.length) {
-				frappe.prompt(fields, run, __("Generate Verified QR for {0} cards", [names.length]), __("Generate"));
-			} else {
-				run(null);
-			}
+			frappe.prompt(fields, run, __("Generate Verified QR for {0} cards", [names.length]), __("Generate"));
 		});
 	},
 };

@@ -263,25 +263,26 @@ def verify_qr_img(
 	return f'<img class="scan-me-qr" src="{src}" style="width:{safe_size}; height:{safe_size};">'
 
 
-# School stamp for print formats — bundled PNG asset emitted inline as a base64 data URI.
-# Reading the committed file and encoding server-side (the same approach as the QR helpers
-# above) keeps the image embedded in the rendered HTML/PDF while avoiding the corruption
-# that hand-pasting a large base64 blob into a print format's HTML caused.
-_STAMP_REL_PATH = ("public", "images", "mbs_stamp.png")
-_stamp_data_uri_cache = None
+# Bundled PNG assets (stamp, logo) emitted inline as base64 data URIs. Reading the committed
+# file and encoding server-side (the same approach as the QR helpers above) keeps the image
+# embedded in the rendered HTML/PDF. This both avoids the corruption that hand-pasting a large
+# base64 blob into a print format's HTML caused, and works where /files/*.svg logos don't
+# render in wkhtmltopdf.
+_bundled_image_cache = {}
 
 
-def _stamp_data_uri() -> str:
-	"""Return the bundled stamp PNG as ``data:image/png;base64,…`` (cached), or "" on error."""
-	global _stamp_data_uri_cache
-	if _stamp_data_uri_cache is None:
+def _bundled_image_data_uri(filename: str) -> str:
+	"""Return a bundled ``public/images`` PNG as ``data:image/png;base64,…`` (cached), or ""."""
+	if filename not in _bundled_image_cache:
 		try:
-			path = frappe.get_app_path("scan_me", *_STAMP_REL_PATH)
+			path = frappe.get_app_path("scan_me", "public", "images", filename)
 			with open(path, "rb") as f:
-				_stamp_data_uri_cache = f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+				_bundled_image_cache[filename] = (
+					f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+				)
 		except Exception:
-			_stamp_data_uri_cache = ""
-	return _stamp_data_uri_cache
+			_bundled_image_cache[filename] = ""
+	return _bundled_image_cache[filename]
 
 
 @frappe.whitelist(allow_guest=False)
@@ -291,7 +292,21 @@ def report_card_stamp_img(size: str = "24mm") -> str:
 	``size`` is regex-validated to block CSS injection, matching the QR image helpers.
 	"""
 	safe_size = _sanitize_css_size(size)
-	src = _stamp_data_uri()
+	src = _bundled_image_data_uri("mbs_stamp.png")
 	if not src:
 		return ""
 	return f'<img class="scan-me-stamp" src="{src}" style="width:{safe_size}; height:{safe_size};">'
+
+
+@frappe.whitelist(allow_guest=False)
+def report_card_logo_img(height: str = "40px") -> str:
+	"""``<img>`` of the bundled school logo (raster PNG, renders where the SVG doesn't); "".
+
+	``height`` is regex-validated to block CSS injection; width is left auto to preserve
+	the logo's aspect ratio.
+	"""
+	safe_height = _sanitize_css_size(height)
+	src = _bundled_image_data_uri("mbs_logo.png")
+	if not src:
+		return ""
+	return f'<img class="scan-me-logo" src="{src}" style="height:{safe_height}; width:auto;">'

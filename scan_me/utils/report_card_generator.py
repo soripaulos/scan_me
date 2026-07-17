@@ -42,6 +42,24 @@ def _term_sort_key(term_row):
 	return (_term_rank(term_row.get("academic_term")), term_row.get("academic_term") or "")
 
 
+FIRST_SEMESTER = "First Semester"
+SECOND_SEMESTER = "Second Semester"
+
+
+def normalize_period(academic_term):
+	"""Reduce a term label like '2018 E.C. (First Semester)' to 'First Semester'.
+
+	The card stores clean period labels ('First Semester' / 'Second Semester' / 'Year')
+	so the print format can pivot subjects into per-period columns and so the semester
+	headers aren't cluttered with the redundant year. Unknown labels pass through."""
+	label = (academic_term or "").lower()
+	if "first" in label:
+		return FIRST_SEMESTER
+	if "second" in label:
+		return SECOND_SEMESTER
+	return (academic_term or "").strip() or None
+
+
 def _dedupe_terms(terms):
 	"""Keep only the most recently modified submitted report per (student, year, term).
 
@@ -53,6 +71,16 @@ def _dedupe_terms(terms):
 		key = (t.student, t.academic_year, t.academic_term)
 		if key not in latest or str(t.modified or "") > str(latest[key].modified or ""):
 			latest[key] = t
+	return list(latest.values())
+
+
+def _dedupe_years(years):
+	"""Keep the most recently modified year report per (student, academic_year)."""
+	latest = {}
+	for y in years:
+		key = (y.student, y.academic_year)
+		if key not in latest or str(y.modified or "") > str(latest[key].modified or ""):
+			latest[key] = y
 	return list(latest.values())
 
 
@@ -75,19 +103,27 @@ def resolve_student_groups(academic_year=None, program=None, student_group=None)
 	return None
 
 
-def _fetch_source_rows(academic_year=None, students=None, student_groups=None):
-	"""Bulk-load submitted term/year reports and their course child rows."""
-	filters = {"docstatus": 1}
+def _scope_filters(docstatus, academic_year, students, student_groups):
+	filters = {"docstatus": docstatus}
 	if academic_year:
 		filters["academic_year"] = academic_year
 	if students:
 		filters["student"] = ("in", students)
 	if student_groups is not None:
 		filters["student_group"] = ("in", student_groups)
+	return filters
 
+
+def _fetch_source_rows(academic_year=None, students=None, student_groups=None):
+	"""Bulk-load term/year reports and their course child rows.
+
+	Term reports are read when submitted (docstatus=1). Year reports are read whether
+	draft or submitted (docstatus < 2): in this deployment year reports are left in
+	draft, and the card must still reflect them — only cancelled reports are ignored.
+	"""
 	terms = frappe.get_all(
 		"Student Term Report",
-		filters=filters,
+		filters=_scope_filters(1, academic_year, students, student_groups),
 		fields=[
 			"name",
 			"student",
@@ -106,7 +142,7 @@ def _fetch_source_rows(academic_year=None, students=None, student_groups=None):
 	terms = _dedupe_terms(terms)
 	years = frappe.get_all(
 		"Student Year Report",
-		filters=filters,
+		filters=_scope_filters(("<", 2), academic_year, students, student_groups),
 		fields=[
 			"name",
 			"student",
@@ -115,8 +151,10 @@ def _fetch_source_rows(academic_year=None, students=None, student_groups=None):
 			"rank_in_group",
 			"student_group",
 			"custom_remark",
+			"modified",
 		],
 	)
+	years = _dedupe_years(years)
 
 	term_courses = {}
 	if terms:
@@ -173,9 +211,10 @@ def build_payloads(academic_year=None, students=None, student_groups=None):
 	for t in sorted(terms, key=_term_sort_key):
 		p = entry(t.student, t.academic_year)
 		p["student_group"] = p["student_group"] or t.student_group
+		period = normalize_period(t.academic_term)
 		p["semesters"].append(
 			{
-				"academic_term": t.academic_term,
+				"academic_term": period,
 				"term_average": t.term_average,
 				"rank_in_group": t.rank_in_group,
 				"remark": t.custom_remark,
@@ -188,7 +227,7 @@ def build_payloads(academic_year=None, students=None, student_groups=None):
 		for c in term_courses.get(t.name, []):
 			p["scores"].append(
 				{
-					"period": t.academic_term,
+					"period": period,
 					"course": c.course,
 					"score": c.total_score_for_term,
 					"max_score": c.total_maximum_score,
@@ -344,12 +383,14 @@ def refresh_report_card(name):
 
 
 @frappe.whitelist()
-def bulk_generate_qr(names, resign=0):
+def bulk_generate_qr(names, resign=0, director=None):
 	"""Generate Verified QRs for the given Student Report Cards.
 
-	``resign=1`` (System Manager only) first deletes existing QRs for a card whose
-	content changed since signing, so an updated card can be re-signed in one pass.
-	Per-card failures are collected, not raised, so one bad card doesn't stop the run.
+	``director`` (a School Director) is assigned to each card before signing, so the
+	chosen signatory's name/position/signature print on the card and are covered by the
+	QR's tamper hash. ``resign=1`` (System Manager only) first deletes existing QRs for a
+	card whose content changed since signing, so an updated card can be re-signed in one
+	pass. Per-card failures are collected, not raised, so one bad card doesn't stop the run.
 	"""
 	from scan_me.utils.generate_qr import generate_verified_qr
 
@@ -358,10 +399,21 @@ def bulk_generate_qr(names, resign=0):
 	resign = frappe.utils.cint(resign)
 	if resign:
 		frappe.only_for("System Manager")
+	if director and not frappe.db.exists("School Director", director):
+		frappe.throw(frappe._("School Director {0} not found.").format(director))
 
 	summary = {"created": 0, "existing": 0, "resigned": 0, "errors": []}
 	for name in names or []:
 		try:
+			if director:
+				# Set the signatory before signing so it is part of the hashed content.
+				card = frappe.get_doc("Student Report Card", name)
+				if not card.has_permission("write"):
+					raise frappe.PermissionError(f"Not permitted to update {name}")
+				if card.director != director:
+					card.director = director
+					card.save(ignore_permissions=True)
+
 			if resign:
 				old_qrs = frappe.get_all(
 					"Verified QR",

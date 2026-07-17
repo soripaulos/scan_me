@@ -24,6 +24,8 @@
   "year_rank",
   "column_break_year",
   "year_remark",
+  "signatory_section",
+  "director",
   "meta_section",
   "last_generated_on",
   "source_fingerprint"
@@ -141,6 +143,18 @@
    "fieldname": "year_remark",
    "fieldtype": "Small Text",
    "label": "Year Remark"
+  },
+  {
+   "fieldname": "signatory_section",
+   "fieldtype": "Section Break",
+   "label": "Signatory"
+  },
+  {
+   "description": "Director who signs this report card. Their name, position and signature are pulled from the School Director record onto the printed card.",
+   "fieldname": "director",
+   "fieldtype": "Link",
+   "label": "Director",
+   "options": "School Director"
   },
   {
    "collapsible": 1,

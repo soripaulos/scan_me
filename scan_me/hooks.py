@@ -100,6 +100,7 @@ jinja = {
 		"scan_me.utils.jinja_functions.verify_qr",
 		"scan_me.utils.jinja_functions.verify_qr_img",
 		"scan_me.utils.jinja_functions.report_card_stamp_img",
+		"scan_me.utils.jinja_functions.report_card_logo_img",
 	],
 }
 # Installation
