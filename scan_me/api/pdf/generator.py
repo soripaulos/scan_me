@@ -62,6 +62,25 @@ def generate_chrome_pdf(doctype, name, print_format=None, letter_head=None, opti
 
 	assert_allowed_doctype(doctype)
 
+	final_pdf, opts = _generate_pdf_bytes(doctype, name, print_format, letter_head, options, preview_mode)
+
+	is_preview = bool(frappe.utils.cint(preview_mode))
+	safe_name = re.sub(r"[^\w\-.]", "-", name)
+
+	# Only on download — preview runs every keystroke and would litter attachments.
+	if not is_preview and opts.get("attach_to_doc"):
+		_attach_pdf_to_doc(final_pdf, safe_name, doctype, name)
+	frappe.local.response.filename = f"{safe_name}.pdf"
+	frappe.local.response.filecontent = final_pdf
+	frappe.local.response.type = "pdf"
+
+
+def _generate_pdf_bytes(doctype, name, print_format=None, letter_head=None, options=None, preview_mode=0):
+	"""Render a document to PDF bytes via headless Chromium; returns (pdf_bytes, opts).
+
+	NOT whitelisted and performs NO permission or allowlist checks — every caller
+	must gate access itself (generate_chrome_pdf checks print permission; the
+	student portal endpoint checks card ownership)."""
 	# Reject cross-doctype Print Formats: a format targeting doctype B
 	# resolving against A's doc could leak unintended fragments.
 	# Empty/None and "Standard" are always safe (built-in pseudo-format).
@@ -205,11 +224,4 @@ def generate_chrome_pdf(doctype, name, print_format=None, letter_head=None, opti
 	if not is_preview:
 		final_pdf = _maybe_pades_sign(final_pdf, opts, doctype, name)
 
-	safe_name = re.sub(r"[^\w\-.]", "-", name)
-
-	# Only on download — preview runs every keystroke and would litter attachments.
-	if not is_preview and opts.get("attach_to_doc"):
-		_attach_pdf_to_doc(final_pdf, safe_name, doctype, name)
-	frappe.local.response.filename = f"{safe_name}.pdf"
-	frappe.local.response.filecontent = final_pdf
-	frappe.local.response.type = "pdf"
+	return final_pdf, opts
