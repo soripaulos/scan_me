@@ -124,14 +124,20 @@ def _load_parked(key):
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])
-def download_report_card(key=None):
-	"""Render the student's report card to PDF and return it inline.
+def download_report_card(key=None, dl=None):
+	"""Render the student's report card to PDF; inline preview or file download.
 
-	Serving inline (not as an attachment) means the browser shows the report
-	card exactly as it did before — a PDF preview with the viewer's own save
-	control. Guest access is safe: keys are 122-bit random UUIDs with a short
-	TTL and the format is validated before touching the cache. The key stays
-	valid for its TTL, then expires on its own.
+	Default (``dl`` falsy): the browser shows the PDF preview exactly as
+	before, and the page carries a small "Download PDF" link (a PDF link
+	annotation the print format draws when ``doc.rc_download_url`` is set)
+	pointing back here with ``dl=1``.
+
+	``dl=1``: the same card is rendered WITHOUT the button and streamed as an
+	attachment, so clicking the button saves a clean file directly.
+
+	Guest access is safe: keys are 122-bit random UUIDs with a short TTL and
+	the format is validated before touching the cache. The key stays valid for
+	its TTL (the preview and the download click both use it), then expires.
 	"""
 	payload = _load_parked(key)
 	if not payload:
@@ -142,6 +148,19 @@ def download_report_card(key=None):
 
 	from scan_me.api.pdf.generator import _generate_pdf_bytes
 
+	is_download = bool(frappe.utils.cint(dl))
+	card_doc = None
+	if not is_download:
+		# Attach the download URL to the doc — Jinja's sandbox hides
+		# frappe.flags/form_dict, so a doc attribute is the only per-render
+		# channel into the template. Staff prints never set it, so the button
+		# can never appear on the school's own prints.
+		safe_key = (key or "").strip().lower()
+		card_doc = frappe.get_doc(REPORT_CARD_DOCTYPE, payload["card"])
+		card_doc.rc_download_url = frappe.utils.get_url(
+			f"/api/method/scan_me.api.student_portal.download_report_card?key={safe_key}&dl=1"
+		)
+
 	# Ownership was proven when the key was issued; render bypasses the
 	# print-permission gate on purpose. No letterhead, default options.
 	frappe.flags.ignore_print_permissions = True
@@ -151,6 +170,7 @@ def download_report_card(key=None):
 		print_format=REPORT_CARD_PRINT_FORMAT,
 		letter_head=None,
 		options=None,
+		doc=card_doc,
 	)
 
 	label = re.sub(
@@ -158,4 +178,9 @@ def download_report_card(key=None):
 	)
 	frappe.local.response.filename = f"{label}.pdf"
 	frappe.local.response.filecontent = pdf_bytes
-	frappe.local.response.type = "pdf"
+	if is_download:
+		# "download" -> Content-Disposition: attachment (saves the file).
+		frappe.local.response.content_type = "application/pdf"
+		frappe.local.response.type = "download"
+	else:
+		frappe.local.response.type = "pdf"

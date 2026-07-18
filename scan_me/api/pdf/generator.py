@@ -106,12 +106,17 @@ def generate_chrome_pdf(doctype, name, print_format=None, letter_head=None, opti
 	frappe.local.response.type = "pdf"
 
 
-def _generate_pdf_bytes(doctype, name, print_format=None, letter_head=None, options=None, preview_mode=0):
+def _generate_pdf_bytes(doctype, name, print_format=None, letter_head=None, options=None, preview_mode=0, doc=None):
 	"""Render a document to PDF bytes via headless Chromium; returns (pdf_bytes, opts).
 
 	NOT whitelisted and performs NO permission or allowlist checks — every caller
 	must gate access itself (generate_chrome_pdf checks print permission; the
-	student portal endpoint checks card ownership)."""
+	student portal endpoint checks card ownership).
+
+	``doc``: optional pre-loaded Document to render instead of re-fetching. Lets a
+	caller attach extra template-visible attributes (e.g. the student portal's
+	``rc_download_url``) — Jinja's sandbox hides frappe.flags/form_dict, so the
+	doc object is the only reliable per-render channel into the template."""
 	# Reject cross-doctype Print Formats: a format targeting doctype B
 	# resolving against A's doc could leak unintended fragments.
 	# Empty/None and "Standard" are always safe (built-in pseudo-format).
@@ -153,6 +158,7 @@ def _generate_pdf_bytes(doctype, name, print_format=None, letter_head=None, opti
 		doctype,
 		name,
 		print_format=print_format,
+		doc=doc,
 		as_pdf=False,
 		no_letterhead=True,
 	)

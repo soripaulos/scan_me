@@ -128,40 +128,42 @@ def ensure_chromium(force=False):
 		pass
 
 
-def _expected_chromium_executable(base: Path):
-	"""Path the *currently installed* Playwright expects its Chromium build at,
-	or None if it can't be resolved.
+def _expected_headless_shell_dir(base: Path):
+	"""Directory the *currently installed* Playwright expects the headless-shell
+	build in (e.g. chromium_headless_shell-1228), or None if it can't be resolved.
 
-	Keyed off the live Playwright version so a pip upgrade — which bumps the
-	expected build number — makes the previous, now-orphaned build read as
-	invalid instead of satisfying a blunt "any chromium* dir" check."""
-	prev = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
-	os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(base)
+	Read from Playwright's own browsers.json registry — not from
+	``chromium.executable_path``, which points at the FULL chromium build we
+	never install and would therefore always read as missing. Keyed off the
+	live Playwright version so a pip upgrade — which bumps the expected build
+	number — makes the previous, now-orphaned build read as invalid instead of
+	satisfying a blunt "any chromium* dir" check."""
 	try:
-		from playwright.sync_api import sync_playwright
+		import json
 
-		with sync_playwright() as pw:
-			return Path(pw.chromium.executable_path)
+		import playwright
+
+		registry = Path(playwright.__file__).parent / "driver" / "package" / "browsers.json"
+		data = json.loads(registry.read_text())
+		revision = next(
+			b["revision"] for b in data["browsers"] if b["name"] == "chromium-headless-shell"
+		)
+		return base / f"chromium_headless_shell-{revision}"
 	except Exception:
 		return None
-	finally:
-		if prev is None:
-			os.environ.pop("PLAYWRIGHT_BROWSERS_PATH", None)
-		else:
-			os.environ["PLAYWRIGHT_BROWSERS_PATH"] = prev
 
 
 def _chromium_cache_valid(base: Path) -> bool:
 	"""True only if the Chromium build the current Playwright needs is present."""
 	if not base.exists():
 		return False
-	# Exact check: does the build the running Playwright resolves to actually
-	# exist? This catches the post-upgrade case where an older build is cached
+	# Exact check: is the revision the installed Playwright wants fully
+	# downloaded? Catches the post-upgrade case where an older build is cached
 	# (marker and all) but the new Playwright looks for a different build.
-	expected = _expected_chromium_executable(base)
+	expected = _expected_headless_shell_dir(base)
 	if expected is not None:
-		return expected.exists()
-	# Fallback (couldn't resolve the expected path): any chromium* build that
+		return (expected / _PLAYWRIGHT_MARKER).exists()
+	# Fallback (couldn't resolve the expected build): any chromium* build that
 	# finished downloading — preserves the original, less precise behaviour.
 	for child in base.iterdir():
 		if not child.is_dir():
