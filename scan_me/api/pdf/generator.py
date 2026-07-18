@@ -34,6 +34,26 @@ def _ensure_browsers_path():
 	os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", bench_browsers)
 
 
+def _self_heal_chromium():
+	"""Kick off a background (re)download of Chromium after a missing-binary launch.
+
+	A Playwright pip upgrade bumps the expected browser build, which orphans the
+	cached one; force=True re-fetches the build the current Playwright needs.
+	Deduplicated so a burst of failed requests enqueues the download only once —
+	so PDF generation self-heals with no manual `playwright install` / migrate."""
+	try:
+		frappe.enqueue(
+			"scan_me.install.ensure_chromium",
+			queue="long",
+			timeout=1200,
+			job_id="scan_me_chromium_reinstall",
+			deduplicate=True,
+			force=True,
+		)
+	except Exception:
+		frappe.log_error("Scan Me: chromium reinstall enqueue failed", frappe.get_traceback())
+
+
 def _launch_chromium(pw):
 	"""Launch headless Chromium, translating a missing-system-library crash into an
 	actionable error. Without packages like libatk the binary exits 127 and Playwright
@@ -42,6 +62,17 @@ def _launch_chromium(pw):
 		return pw.chromium.launch(args=["--no-sandbox", "--disable-setuid-sandbox"])
 	except Exception as e:
 		text = str(e)
+		# Browser binary missing (fresh install, or a Playwright upgrade orphaned
+		# the cached build) — trigger a background reinstall and ask to retry.
+		if "Executable doesn't exist" in text or "playwright install" in text.lower():
+			_self_heal_chromium()
+			frappe.throw(
+				frappe._(
+					"The report card engine is finishing a one-time setup. "
+					"Please try again in a few minutes."
+				),
+				frappe.ValidationError,
+			)
 		if "error while loading shared libraries" in text or "cannot open shared object file" in text:
 			frappe.log_error("Chrome PDF: missing system libraries", frappe.get_traceback())
 			frappe.throw(
