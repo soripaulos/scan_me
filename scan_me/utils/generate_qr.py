@@ -41,6 +41,16 @@ def _lookup_user_signature(user):
 # doctype, so that is the primary case; the Student Term Report branch is
 # kept for backward compatibility.
 def _capture_report_card_data(doctype, docname):
+	if doctype == "Student Transcript":
+		from scan_me.utils.report_card_snapshot import build_transcript_doc_snapshot
+
+		try:
+			tc = frappe.get_doc(doctype, docname)
+			snapshot = build_transcript_doc_snapshot(tc)
+			return frappe.as_json(snapshot) if snapshot else None
+		except Exception:
+			return None
+
 	if doctype == "Student Report Card":
 		from scan_me.utils.report_card_snapshot import build_report_card_doc_snapshot
 

@@ -16,6 +16,77 @@ Queries mirror the ``Student Report Card - Comprehensive`` print format (doctype
 """
 
 import frappe
+from frappe.utils import flt
+
+
+def build_transcript_doc_snapshot(tc):
+	"""Snapshot a ``Student Transcript`` doc for ``Verified QR.report_card_data``.
+
+	Distinct ``type`` so the verify page can tell a multi-year transcript from a
+	single report card and render it accordingly. Reads only the signed transcript,
+	so the snapshot and the tamper hash cover the same data.
+	"""
+	years = []
+	for yr in tc.get("years") or []:
+		subs = [r for r in (tc.get("subjects") or []) if r.year_label == yr.year_label]
+		firsts = [flt(r.first_sem) for r in subs]
+		seconds = [flt(r.second_sem) for r in subs]
+		avgs = [flt(r.average) for r in subs]
+		count = len(subs)
+		years.append(
+			{
+				"grade": yr.grade,
+				"academic_year": yr.academic_year,
+				"is_current": 1 if yr.is_current else 0,
+				"conduct": {
+					"first": yr.conduct_first,
+					"second": yr.conduct_second,
+					"average": yr.conduct_average,
+				},
+				"rank": {
+					"first": yr.rank_first,
+					"second": yr.rank_second,
+					"average": yr.rank_average,
+				},
+				"subjects": [
+					{
+						"subject": r.subject,
+						"first_sem": r.first_sem,
+						"second_sem": r.second_sem,
+						"average": r.average,
+					}
+					for r in subs
+				],
+				"total": {
+					"first": round(sum(firsts), 2),
+					"second": round(sum(seconds), 2),
+					"average": round(sum(avgs), 2),
+				}
+				if count
+				else None,
+				"average_pct": {
+					"first": round(sum(firsts) / count, 2),
+					"second": round(sum(seconds) / count, 2),
+					"average": round(sum(avgs) / count, 2),
+				}
+				if count
+				else None,
+			}
+		)
+
+	if not years:
+		return None
+
+	return {
+		"type": "transcript",
+		"student_name": tc.student_name,
+		"student_id": tc.student,
+		"government_student_id": tc.government_student_id or None,
+		"current_grade": tc.current_grade,
+		"current_academic_year": tc.current_academic_year,
+		"behavior": tc.behavior,
+		"years": years,
+	}
 
 
 def build_report_card_doc_snapshot(card):
