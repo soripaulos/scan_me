@@ -54,9 +54,9 @@ function generate_verified_qr(frm) {
 		method: "scan_me.scan_me.doctype.verified_qr.verified_qr.check_signature_required",
 		args: { doctype: frm.doctype },
 		callback(r) {
-			if (!r.message) return;
-
-			const is_signature_required = r.message;
+			// `false` is a valid answer here (doctype needs no signature image) —
+			// treating it as "abort" left the button dead for every such doctype.
+			const is_signature_required = !!(r && r.message);
 			if (is_signature_required) {
 				if (frappe.session.user == "Administrator") {
 					frappe.throw("Administrator cannot sign documents.");
@@ -73,16 +73,13 @@ function generate_verified_qr(frm) {
 					freeze: true,
 					freeze_message: __("Generating Verified QR..."),
 					callback(res) {
-						if (res.message?.existing) {
-							frappe.msgprint({
-								message: __(
-									res.message.message || "Verified QR Created Successfully."
-								),
-								title: __("Info"),
-								indicator: "green",
-							});
-							frm.reload_doc();
-						}
+						const info = res.message || {};
+						frappe.msgprint({
+							message: __(info.message || "Verified QR Created Successfully."),
+							title: info.existing ? __("Info") : __("Success"),
+							indicator: info.existing ? "orange" : "green",
+						});
+						frm.reload_doc();
 					},
 				});
 			}
