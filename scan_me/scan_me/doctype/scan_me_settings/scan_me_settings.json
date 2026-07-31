@@ -86,21 +86,21 @@
    "fieldtype": "Check",
    "label": "Lock Signature Records Permanently",
    "default": "0",
-   "description": "Prevents anyone — including Administrator — from editing or deleting Verified QR records. Turn on to guarantee a tamper-proof audit trail. Leave on in production."
+   "description": "Prevents anyone \u2014 including Administrator \u2014 from editing or deleting Verified QR records. Turn on to guarantee a tamper-proof audit trail. Leave on in production."
   },
   {
    "fieldname": "reject_client_signature_data",
    "fieldtype": "Check",
    "label": "Use Stored User Signature Only",
    "default": "0",
-   "description": "When on, any signature image sent by the browser is rejected — the server uses only the signature stored on the signer's User profile. When off, the server still prefers the stored signature if one exists and only falls back to the client-supplied image when the User has no stored signature (this prevents a user from submitting someone else's signature image). Requires a Custom Field on the User doctype named one of: user_signature, signature, or signature_image. The handwritten image is consumed only by PAdES digital signing — the on-page stamp does not display it."
+   "description": "When on, any signature image sent by the browser is rejected \u2014 the server uses only the signature stored on the signer's User profile. When off, the server still prefers the stored signature if one exists and only falls back to the client-supplied image when the User has no stored signature (this prevents a user from submitting someone else's signature image). Requires a Custom Field on the User doctype named one of: user_signature, signature, or signature_image. The handwritten image is consumed only by PAdES digital signing \u2014 the on-page stamp does not display it."
   },
   {
    "fieldname": "enable_pades_signing",
    "fieldtype": "Check",
    "label": "Apply Real Digital Signature to PDFs (PAdES)",
    "default": "0",
-   "description": "Cryptographically signs every generated PDF so Adobe Acrobat Reader shows the signature panel. On first use, a self-signed certificate is auto-created — Adobe will show a yellow \"signer's identity is unknown\" banner until trusted. For the trusted green banner, replace the certificate with one from a recognized authority (eMudhra, DigiCert, Sectigo). See the README for the file path and upgrade steps."
+   "description": "Cryptographically signs every generated PDF so Adobe Acrobat Reader shows the signature panel. On first use, a self-signed certificate is auto-created \u2014 Adobe will show a yellow \"signer's identity is unknown\" banner until trusted. For the trusted green banner, replace the certificate with one from a recognized authority (eMudhra, DigiCert, Sectigo). See the README for the file path and upgrade steps."
   },
   {
    "fieldname": "signature_type",
@@ -116,7 +116,7 @@
    "label": "Watermark Mode",
    "options": "Disabled\nDocument Status\nCustom Text",
    "default": "Disabled",
-   "description": "Controls the watermark option shown under the Copies section of the Advanced Print page. Disabled: no watermark option. Document Status: single checkbox — the watermark text is auto-taken from the document's status field (or Draft/Cancelled for submittable docs). Custom Text: checkbox plus a free-text input where the user types the watermark."
+   "description": "Controls the watermark option shown under the Copies section of the Advanced Print page. Disabled: no watermark option. Document Status: single checkbox \u2014 the watermark text is auto-taken from the document's status field (or Draft/Cancelled for submittable docs). Custom Text: checkbox plus a free-text input where the user types the watermark."
   },
   {
    "fieldname": "default_qr_validity_days",
@@ -124,7 +124,54 @@
    "label": "Verified QR Validity (Days)",
    "default": "0",
    "non_negative": 1,
-   "description": "How long a newly generated Verified QR stays valid, counted from the signing date. 0 (default) means the QR never expires. Applied at sign time only — changing this value does NOT retroactively expire existing QRs. The /verify_document page returns an 'expired' status for scans of an expired QR."
+   "description": "How long a newly generated Verified QR stays valid, counted from the signing date. 0 (default) means the QR never expires. Applied at sign time only \u2014 changing this value does NOT retroactively expire existing QRs. The /verify_document page returns an 'expired' status for scans of an expired QR."
+  },
+  {
+   "fieldname": "tab_signing",
+   "fieldtype": "Tab Break",
+   "label": "Signing & Certificates"
+  },
+  {
+   "fieldname": "cert_status_section",
+   "fieldtype": "Section Break",
+   "label": "Active Signing Certificate"
+  },
+  {
+   "fieldname": "cert_status_html",
+   "fieldtype": "HTML",
+   "label": "Certificate Status"
+  },
+  {
+   "fieldname": "cert_actions_section",
+   "fieldtype": "Section Break",
+   "label": "Certificate Actions",
+   "description": "Upload a CA-issued production certificate for green \u2713 globally, or regenerate the auto-generated self-signed certificate (yellow \u26a0 for recipients who haven't trusted it)."
+  },
+  {
+   "fieldname": "upload_cert_btn",
+   "fieldtype": "Button",
+   "label": "Upload Production Certificate"
+  },
+  {
+   "fieldname": "cert_actions_col_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "regenerate_cert_btn",
+   "fieldtype": "Button",
+   "label": "Regenerate Self-Signed Certificate"
+  },
+  {
+   "fieldname": "signing_config_section",
+   "fieldtype": "Section Break",
+   "label": "PAdES Signing Configuration",
+   "description": "How PAdES signing behaves when users tick Apply Signature on the Advanced Print page. The certificate metadata below is used only when a fresh self-signed certificate is auto-generated; CA-issued certificates use whatever Subject is embedded in the uploaded PKCS#12."
+  },
+  {
+   "fieldname": "signing_cert_display_name",
+   "fieldtype": "Data",
+   "label": "Self-Signed Certificate Display Name",
+   "description": "Organisation name baked into the auto-generated self-signed certificate (Subject CN/O). Leave blank to fall back to Global Defaults \u2192 Default Company, then to the site name. Used only when generating a new self-signed certificate via the Regenerate action above \u2014 ignored when a CA-issued certificate is installed."
   },
   {
    "fieldname": "default_academic_year",
@@ -150,7 +197,7 @@
    "label": "Detail Level Shown to Guests",
    "options": "Minimal\nStandard\nFull",
    "default": "Standard",
-   "description": "Controls the maximum detail returned to callers who can already read the referenced document. Guests — and any logged-in user without read access to the target doc — always see only the status and signed-on date, regardless of this setting. Minimal: date only. Standard (recommended): document type, name, full timestamp, signer's name, and verification ID. Full: adds technical hashes on tampered results. The signer's email is never exposed by this endpoint."
+   "description": "Controls the maximum detail returned to callers who can already read the referenced document. Guests \u2014 and any logged-in user without read access to the target doc \u2014 always see only the status and signed-on date, regardless of this setting. Minimal: date only. Standard (recommended): document type, name, full timestamp, signer's name, and verification ID. Full: adds technical hashes on tampered results. The signer's email is never exposed by this endpoint."
   },
   {
    "fieldname": "tab_print_dialog",
@@ -161,7 +208,7 @@
    "fieldname": "print_dialog_section",
    "fieldtype": "Section Break",
    "label": "",
-   "description": "Controls the Scan Me print UI on document forms — the Advanced Print entry point and which sections appear inside that page."
+   "description": "Controls the Scan Me print UI on document forms \u2014 the Advanced Print entry point and which sections appear inside that page."
   },
   {
    "fieldname": "enable_advanced_print_button",
@@ -207,7 +254,7 @@
    "fieldtype": "Check",
    "label": "Live PDF Preview in the Dialog",
    "default": "1",
-   "description": "When on, the dialog shows a preview pane that re-renders the PDF whenever a user changes an option. Turn off for a compact dialog — users only see the PDF after clicking Download."
+   "description": "When on, the dialog shows a preview pane that re-renders the PDF whenever a user changes an option. Turn off for a compact dialog \u2014 users only see the PDF after clicking Download."
   }
  ],
  "grid_page_length": 50,

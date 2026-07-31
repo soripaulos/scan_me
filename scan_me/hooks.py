@@ -99,6 +99,9 @@ jinja = {
 		"scan_me.utils.jinja_functions.qr_link_img",
 		"scan_me.utils.jinja_functions.verify_qr",
 		"scan_me.utils.jinja_functions.verify_qr_img",
+		"scan_me.utils.jinja_functions.report_card_stamp_img",
+		"scan_me.utils.jinja_functions.report_card_logo_img",
+		"scan_me.utils.jinja_functions.student_photo_img",
 	],
 }
 # Installation
@@ -190,6 +193,13 @@ after_migrate = "scan_me.install.after_migrate"
 # 		"scan_me.tasks.monthly"
 # 	],
 # }
+
+scheduler_events = {
+	"daily": [
+		# Keep Student Report Cards in sync with submitted term/year results.
+		"scan_me.utils.report_card_generator.scheduled_sync",
+	],
+}
 
 # Testing
 # -------
