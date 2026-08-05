@@ -49,42 +49,89 @@ function add_generate_qr_button(frm) {
 	});
 }
 
+// Fieldname of this doctype's School Director link, if it has one. Documents that
+// carry a named signatory (report cards, transcripts) are signed by picking that
+// director rather than by drawing a signature.
+function get_director_fieldname(frm) {
+	const fields = (frm.meta && frm.meta.fields) || [];
+	const df = fields.find((f) => f.fieldtype === "Link" && f.options === "School Director");
+	return df ? df.fieldname : null;
+}
+
+function create_verified_qr(frm) {
+	frappe.call({
+		method: "scan_me.utils.generate_qr.generate_verified_qr",
+		args: {
+			doctype: frm.doctype,
+			docname: frm.doc.name,
+		},
+		freeze: true,
+		freeze_message: __("Generating Verified QR..."),
+		callback(res) {
+			const info = res.message || {};
+			frappe.msgprint({
+				message: __(info.message || "Verified QR Created Successfully."),
+				title: info.existing ? __("Info") : __("Success"),
+				indicator: info.existing ? "orange" : "green",
+			});
+			frm.reload_doc();
+		},
+	});
+}
+
+function director_required(frm, fieldname) {
+	frappe.prompt(
+		[
+			{
+				label: __("Signing Director"),
+				fieldname: "director",
+				fieldtype: "Link",
+				options: "School Director",
+				reqd: 1,
+				default: frm.doc[fieldname] || undefined,
+				get_query: () => ({ filters: { disabled: 0 } }),
+				description: __(
+					"Their name, position and signature print on the document and are covered by the QR's tamper hash."
+				),
+			},
+		],
+		(values) => {
+			if (frm.doc[fieldname] === values.director && !frm.is_dirty()) {
+				create_verified_qr(frm);
+				return;
+			}
+			// Store the signatory BEFORE signing, so the content hash covers it and
+			// a later change to the director shows up as tampering.
+			frm.set_value(fieldname, values.director);
+			frm.save().then(() => create_verified_qr(frm));
+		},
+		__("Sign Document"),
+		__("Sign")
+	);
+}
+
 function generate_verified_qr(frm) {
 	frappe.call({
 		method: "scan_me.scan_me.doctype.verified_qr.verified_qr.check_signature_required",
 		args: { doctype: frm.doctype },
 		callback(r) {
-			if (!r.message) return;
-
-			const is_signature_required = r.message;
+			// `false` is a valid answer here (doctype needs no signature image) —
+			// treating it as "abort" left the button dead for every such doctype.
+			const is_signature_required = !!(r && r.message);
 			if (is_signature_required) {
 				if (frappe.session.user == "Administrator") {
 					frappe.throw("Administrator cannot sign documents.");
 				}
 
 				signature_required(frm);
+				return;
+			}
+
+			const director_fieldname = get_director_fieldname(frm);
+			if (director_fieldname) {
+				director_required(frm, director_fieldname);
 			} else {
-				frappe.call({
-					method: "scan_me.utils.generate_qr.generate_verified_qr",
-					args: {
-						doctype: frm.doctype,
-						docname: frm.doc.name,
-					},
-					freeze: true,
-					freeze_message: __("Generating Verified QR..."),
-					callback(res) {
-						if (res.message?.existing) {
-							frappe.msgprint({
-								message: __(
-									res.message.message || "Verified QR Created Successfully."
-								),
-								title: __("Info"),
-								indicator: "green",
-							});
-							frm.reload_doc();
-						}
-					},
-				});
+				create_verified_qr(frm);
 			}
 		},
 	});

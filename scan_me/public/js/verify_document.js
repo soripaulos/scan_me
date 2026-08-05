@@ -374,12 +374,115 @@
 		return section;
 	}
 
+	function fmtVal(v) {
+		if (v === null || v === undefined || v === "") return "—";
+		var n = Number(v);
+		return isNaN(n) ? String(v) : String(n);
+	}
+
+	// Multi-year school transcript (distinct "type" in the snapshot).
+	function renderTranscript(parsed) {
+		var el = document.createElement("div");
+		el.className = "report-card transcript";
+
+		var header = document.createElement("div");
+		header.className = "rc-header";
+		var title = document.createElement("h4");
+		title.className = "rc-title";
+		title.textContent = parsed.student_name || "Transcript";
+		header.appendChild(title);
+		var meta = document.createElement("div");
+		meta.className = "rc-meta";
+		var metaItems = [];
+		if (parsed.current_grade) metaItems.push(parsed.current_grade);
+		if (parsed.current_academic_year) metaItems.push(parsed.current_academic_year);
+		if (parsed.student_id) metaItems.push("ID: " + parsed.student_id);
+		meta.textContent = metaItems.join(" · ");
+		header.appendChild(meta);
+		el.appendChild(header);
+
+		function addCell(row, text, cls) {
+			var td = document.createElement("td");
+			td.textContent = text;
+			if (cls) td.className = cls;
+			row.appendChild(td);
+		}
+		function addSummary(tbody, label, a, b, c) {
+			var tr = document.createElement("tr");
+			tr.className = "rc-total-row";
+			var td = document.createElement("td");
+			td.colSpan = 2;
+			td.className = "tr-sum-label";
+			td.textContent = label;
+			tr.appendChild(td);
+			[a, b, c].forEach(function (v) {
+				var d = document.createElement("td");
+				d.textContent = fmtVal(v);
+				tr.appendChild(d);
+			});
+			tbody.appendChild(tr);
+		}
+
+		(parsed.years || []).forEach(function (yr) {
+			var yt = document.createElement("div");
+			yt.className = "tr-year-title";
+			yt.textContent =
+				(yr.grade || yr.academic_year || "") +
+				(yr.grade && yr.academic_year ? " — " + yr.academic_year : "") +
+				(yr.is_current ? " (Current Year)" : "");
+			el.appendChild(yt);
+
+			var table = document.createElement("table");
+			table.className = "rc-table";
+			var thead = document.createElement("thead");
+			var htr = document.createElement("tr");
+			["#", "Subject", "1st Sem", "2nd Sem", "Average"].forEach(function (h) {
+				var th = document.createElement("th");
+				th.textContent = h;
+				htr.appendChild(th);
+			});
+			thead.appendChild(htr);
+			table.appendChild(thead);
+
+			var tbody = document.createElement("tbody");
+			(yr.subjects || []).forEach(function (sub, i) {
+				var tr = document.createElement("tr");
+				addCell(tr, String(i + 1));
+				addCell(tr, sub.subject || "", "tr-subject");
+				addCell(tr, fmtVal(sub.first_sem));
+				addCell(tr, fmtVal(sub.second_sem));
+				addCell(tr, fmtVal(sub.average));
+				tbody.appendChild(tr);
+			});
+			if (yr.total) addSummary(tbody, "Total", yr.total.first, yr.total.second, yr.total.average);
+			if (yr.average_pct)
+				addSummary(tbody, "Average %", yr.average_pct.first, yr.average_pct.second, yr.average_pct.average);
+			if (yr.conduct)
+				addSummary(tbody, "Conduct", yr.conduct.first, yr.conduct.second, yr.conduct.average);
+			if (yr.rank) addSummary(tbody, "Rank", yr.rank.first, yr.rank.second, yr.rank.average);
+			table.appendChild(tbody);
+			el.appendChild(table);
+		});
+
+		if (parsed.behavior) {
+			var beh = document.createElement("div");
+			beh.className = "tr-behavior";
+			beh.textContent = "Student's Behavior: " + parsed.behavior;
+			el.appendChild(beh);
+		}
+		return el;
+	}
+
 	function renderReportCard(data) {
 		var parsed;
 		try {
 			parsed = typeof data === "string" ? JSON.parse(data) : data;
 		} catch (_e) {
 			return null;
+		}
+
+		if (parsed && parsed.type === "transcript") {
+			return renderTranscript(parsed);
 		}
 
 		var hasSections =

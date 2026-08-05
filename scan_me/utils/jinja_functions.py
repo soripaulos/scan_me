@@ -298,6 +298,72 @@ def report_card_stamp_img(size: str = "24mm") -> str:
 	return f'<img class="scan-me-stamp" src="{src}" style="width:{safe_size}; height:{safe_size};">'
 
 
+# Longest edge the embedded student photo is scaled to before encoding — keeps the
+# generated PDF small when printing transcripts in bulk.
+_PHOTO_MAX_PX = 480
+
+
+def _student_photo_data_uri(student: str) -> str:
+	"""Base64 JPEG data URI for a Student's photo, or "" when it can't be used.
+
+	Student.image values are inconsistent in practice: absolute URLs, site-relative
+	/files paths, private paths, and formats no PDF engine can draw (HEIC). Linking
+	the image therefore fails silently, forces the PDF engine to fetch over the
+	network, or hits an auth wall for private files. Reading the bytes through the
+	File doctype and re-encoding to JPEG server-side makes the photo render the same
+	way everywhere; anything unreadable degrades to no photo rather than a broken icon.
+	"""
+	if not student:
+		return ""
+	url = frappe.db.get_value("Student", student, "image")
+	if not url:
+		return ""
+
+	# Absolute URL → keep only the site-relative file path.
+	path = url
+	if "://" in path:
+		for marker in ("/private/files/", "/files/"):
+			idx = path.find(marker)
+			if idx != -1:
+				path = path[idx:]
+				break
+		else:
+			return ""
+
+	# Resolve through the File doctype rather than joining paths ourselves, so a
+	# crafted image value can't be used to read arbitrary files off the disk.
+	file_name = frappe.db.get_value("File", {"file_url": path}, "name")
+	if not file_name and path != url:
+		file_name = frappe.db.get_value("File", {"file_url": url}, "name")
+	if not file_name:
+		return ""
+
+	try:
+		content = frappe.get_doc("File", file_name).get_content()
+		img = Image.open(BytesIO(content))
+		img.thumbnail((_PHOTO_MAX_PX, _PHOTO_MAX_PX))
+		if img.mode != "RGB":
+			img = img.convert("RGB")
+		buf = BytesIO()
+		img.save(buf, format="JPEG", quality=85)
+		return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
+	except Exception:
+		# Unreadable or undrawable (e.g. HEIC) — print without a photo.
+		return ""
+
+
+# Deliberately NOT whitelisted: it is only ever called while rendering a print
+# format server-side. Exposing it over /api/method would let any logged-in user
+# pull any student's photo by ID.
+def student_photo_img(student: str, height: str = "26mm") -> str:
+	"""``<img>`` of a Student's photo embedded as base64; "" when there is none."""
+	safe_height = _sanitize_css_size(height)
+	src = _student_photo_data_uri(student)
+	if not src:
+		return ""
+	return f'<img class="scan-me-student-photo" src="{src}" style="height:{safe_height}; width:auto;">'
+
+
 @frappe.whitelist(allow_guest=False)
 def report_card_logo_img(height: str = "40px") -> str:
 	"""``<img>`` of the bundled school logo (raster PNG, renders where the SVG doesn't); "".

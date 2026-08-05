@@ -469,3 +469,36 @@ html, body {
     border-bottom: none;
     padding: 6px 8px;
 }
+
+/* Multi-year transcript */
+.report-card.transcript .tr-year-title {
+    margin: 16px 0 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+}
+.report-card.transcript .tr-year-title:first-of-type {
+    margin-top: 10px;
+}
+.report-card.transcript .rc-table td.tr-subject,
+.report-card.transcript .rc-table th:nth-child(2) {
+    text-align: left;
+}
+.report-card.transcript .rc-table td:first-child,
+.report-card.transcript .rc-table th:first-child {
+    text-align: center;
+    color: var(--text-muted);
+    width: 28px;
+}
+.report-card.transcript .tr-sum-label {
+    text-align: right;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+}
+.report-card.transcript .tr-behavior {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+}
